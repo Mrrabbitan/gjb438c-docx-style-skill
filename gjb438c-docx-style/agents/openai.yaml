@@ -1,0 +1,4 @@
+interface:
+  display_name: "GJB438C DOCX Style"
+  short_description: "GJB438C DOCX template formatting and audit"
+  default_prompt: "Use $gjb438c-docx-style to generate or reformat a DOCX into the GJB438C overall technical solution template."
