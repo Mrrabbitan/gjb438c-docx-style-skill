@@ -22,6 +22,29 @@ Use these prompts as task scaffolds. Fill placeholders with the user's source pa
 5. 生成后运行审计脚本并说明校验结果。
 ```
 
+## Generate Standard GJB Document Type
+
+```text
+使用 $gjb438c-docx-style，基于以下来源资料生成一份 GJB 438C-2021 标准软件文档：
+
+文档类型：
+- <SDP/SIP/STrP/STP/OCD/SSS/IRS/SSDD/IDD/SRS/SDD/DBDD/STD/STR/SPS/SVD/SUM/CPM/FSM/SDSR>
+
+来源资料：
+- <source-path-1>
+- <source-path-2>
+
+输出文件：
+- <output-docx>
+
+要求：
+1. 先读取 `references/gjb438c-2021-requirements.md` 判断文档类型和对应附录。
+2. 不强行套用总体技术方案 9 章结构。
+3. 保留 GJB 通用组成：封面、修改页、目录、正文、附录；缺失内容按裁剪规则说明。
+4. 表格、题注、标题、正文必须使用模板样式。
+5. 生成后运行审计脚本；标准文档不要启用 `--strict-overall`。
+```
+
 ## Reformat Existing DOCX
 
 ```text
@@ -57,7 +80,7 @@ Use these prompts as task scaffolds. Fill placeholders with the user's source pa
 2. 二级标题套用 Heading 2。
 3. 三级至五级标题套用 Heading 3 到 Heading 5。
 4. 正文套用 145正文。
-5. 表头套用 DB表头，表体套用 DB表正文。
+5. 表头套用 145表头，表体套用 145表正文。
 6. 图题/表题套用 Caption。
 7. 修复后运行审计脚本。
 ```
@@ -77,4 +100,3 @@ Use these prompts as task scaffolds. Fill placeholders with the user's source pa
 4. 检查旧模板业务关键词残留。
 5. 输出问题清单；如用户要求修复，再生成修复版 DOCX。
 ```
-
