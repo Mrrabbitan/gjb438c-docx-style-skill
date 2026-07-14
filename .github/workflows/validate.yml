@@ -24,6 +24,10 @@ jobs:
       - name: Generate demo document
         run: python gjb438c-docx-style/scripts/apply_gjb438c_template.py --demo --output build/gjb438c-demo.docx
       - name: Audit demo document
-        run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/gjb438c-demo.docx --strict-secondary --strict-tables
+        run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/gjb438c-demo.docx --strict-overall --strict-secondary --strict-tables
+      - name: Generate standard GJB document-type demo
+        run: python gjb438c-docx-style/scripts/apply_gjb438c_template.py --demo --document-type SDP --output build/gjb438c-sdp-demo.docx
+      - name: Audit standard GJB document-type demo
+        run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/gjb438c-sdp-demo.docx --strict-tables
       - name: Install skill to temporary directory
         run: python tools/install_skill.py --dest build/skills --force
