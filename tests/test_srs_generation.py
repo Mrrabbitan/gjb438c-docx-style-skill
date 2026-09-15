@@ -2,6 +2,7 @@
 from copy import deepcopy
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -128,7 +129,7 @@ class SrsGenerationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             content = Path(folder) / "invalid.json"
             content.write_text('{"metadata":[]}', encoding="utf-8")
-            result = subprocess.run([sys.executable, str(SCRIPTS / "apply_gjb438c_template.py"), "--content-json", str(content), "--output", str(Path(folder) / "output.docx"), "--json"], capture_output=True, text=True)
+            result = subprocess.run([sys.executable, str(SCRIPTS / "apply_gjb438c_template.py"), "--content-json", str(content), "--output", str(Path(folder) / "output.docx"), "--json"], capture_output=True, text=True, encoding="utf-8")
             self.assertEqual(result.returncode, 2)
             report = json.loads(result.stdout)
             self.assertFalse(report["ok"])
@@ -141,10 +142,11 @@ class SrsGenerationTests(unittest.TestCase):
             model["source_requirements"].append(dict(model["source_requirements"][0], id="SYS-MISSING"))
             content = Path(folder) / "model.json"
             content.write_text(json.dumps(model, ensure_ascii=False), encoding="utf-8")
-            result = subprocess.run([sys.executable, str(SCRIPTS / "apply_gjb438c_template.py"), "--content-json", str(content), "--output", str(Path(folder) / "output.docx"), "--mode", "review", "--json"], capture_output=True, text=True)
+            result = subprocess.run([sys.executable, str(SCRIPTS / "apply_gjb438c_template.py"), "--content-json", str(content), "--output", str(Path(folder) / "output.docx"), "--mode", "review", "--json"], capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, PYTHONIOENCODING="cp1252"))
             self.assertEqual(result.returncode, 1)
             report = json.loads(result.stdout)
             self.assertTrue(any(row["rule_id"] == "SRS-SOURCE-UNCOVERED" and row["object_id"] == "SYS-MISSING" for row in report["issues"]))
+            self.assertIn("来源", result.stdout)
 
 
 if __name__ == "__main__":

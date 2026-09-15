@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -128,13 +129,23 @@ class StructureTests(unittest.TestCase):
 
 
 class PackageTests(unittest.TestCase):
+    def test_json_report_preserves_chinese_under_legacy_output_encoding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "软件不存在.docx"
+            process = subprocess.run([sys.executable, str(ROOT / "gjb438c-docx-style/scripts/audit_gjb438c_docx.py"), str(path), "--json"], capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, PYTHONIOENCODING="cp1252"))
+            self.assertEqual(process.returncode, 2, process.stderr)
+            report = json.loads(process.stdout)
+            self.assertFalse(report["ok"])
+            self.assertIn("软件不存在", process.stdout)
+            self.assertNotIn("Traceback", process.stderr)
+
     def test_invalid_docx_json_has_defined_exit(self):
         import zipfile
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bad.docx"
             with zipfile.ZipFile(path, "w") as z:
                 z.writestr("word/document.xml", "<broken")
-            process = subprocess.run([sys.executable, str(ROOT / "gjb438c-docx-style/scripts/audit_gjb438c_docx.py"), str(path), "--json"], text=True, capture_output=True)
+            process = subprocess.run([sys.executable, str(ROOT / "gjb438c-docx-style/scripts/audit_gjb438c_docx.py"), str(path), "--json"], text=True, capture_output=True, encoding="utf-8")
             self.assertEqual(process.returncode, 2)
             result = json.loads(process.stdout)
             self.assertFalse(result["ok"])
