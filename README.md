@@ -89,7 +89,9 @@ python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/srs-review.docx --
 
 Passing the same model to the audit enables checks against the supplied
 requirement and source records. Follow the skill's review gate for evidence and
-rendered-page inspection after these commands.
+rendered-page inspection after these commands. Generator and audit command-line
+reports use UTF-8 on all platforms, including redirected Windows output;
+subprocess callers should decode their output as UTF-8.
 
 Example Codex request:
 

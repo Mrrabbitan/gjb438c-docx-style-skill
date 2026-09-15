@@ -1237,6 +1237,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    # Reports contain Chinese text even when stdout is redirected on Windows.
+    # Define an explicit wire encoding instead of inheriting a legacy code page.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     args = parse_args()
     issues: list[dict[str, Any]] = []
     try:

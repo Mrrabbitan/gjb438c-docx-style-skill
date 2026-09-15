@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 import zipfile
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -844,6 +845,10 @@ def merge_results(results: list[AuditResult]) -> AuditResult:
 
 
 def main() -> int:
+    # Keep Chinese findings and paths intact under redirected Windows output.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     args = parse_args()
     results: list[AuditResult] = []
     try:
