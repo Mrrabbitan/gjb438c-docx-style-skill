@@ -1,0 +1,103 @@
+{
+  "overall-technical-solution": {
+    "template": "assets/1-2总体技术方案-模板参考.docx",
+    "sections": 2,
+    "cover": "table",
+    "body_style": "145正文",
+    "table_header_style": "145表头",
+    "table_body_style": "145表正文",
+    "figure_style": "145图样式",
+    "caption_style": "Caption",
+    "toc_instruction_contains": [
+      "TOC",
+      "1-3",
+      "\\h",
+      "\\z"
+    ],
+    "front_page_format": "upperRoman",
+    "body_page_format": "decimal"
+  },
+  "SRS-P09": {
+    "template": "assets/P-09-软件需求规格说明-438C模板.docx",
+    "sections": 3,
+    "cover": "paragraph",
+    "body_style": "SRS正文",
+    "table_header_style": "SRS表头",
+    "table_body_style": "SRS表正文",
+    "figure_style": "SRS图样式",
+    "caption_style": "SRS题注",
+    "toc_instruction_contains": [
+      "TOC",
+      "1-3",
+      "\\h",
+      "\\z",
+      "\\u"
+    ],
+    "front_page_format": "lowerRoman",
+    "body_page_format": "decimal",
+    "section_margins_twips": [
+      [
+        1701,
+        1814,
+        1588,
+        1474
+      ],
+      [
+        1440,
+        1440,
+        1800,
+        1800
+      ],
+      [
+        1440,
+        1440,
+        1800,
+        1800
+      ]
+    ],
+    "header_twips": 851,
+    "footer_twips": 992,
+    "required_h1": [
+      "范围",
+      "引用文档",
+      "需求",
+      "合格性规定",
+      "需求可追踪性",
+      "注释"
+    ],
+    "required_h2": [
+      "标识",
+      "系统概述",
+      "文档概述",
+      "要求的状态和方式",
+      "CSCI能力需求",
+      "CSCI外部接口需求",
+      "CSCI内部接口需求",
+      "CSCI内部数据需求",
+      "适应性需求",
+      "保密性需求",
+      "安全性需求",
+      "CSCI环境适应性需求",
+      "其他质量特性",
+      "计算机资源需求",
+      "设计和实现约束",
+      "人员相关需求",
+      "训练相关需求",
+      "软件保障需求",
+      "包装需求",
+      "其他需求",
+      "需求的优先顺序和关键性"
+    ],
+    "required_resource_h3": [
+      "计算机硬件需求",
+      "计算机硬件资源使用需求",
+      "计算机软件需求",
+      "计算机通信需求"
+    ],
+    "front_page_format_authority": "GJB 438C-2021 4.3.7.1",
+    "public_template_sanitized": true,
+    "cover_page_format": "lowerRoman",
+    "cover_page_start": 1,
+    "front_page_start": null
+  }
+}

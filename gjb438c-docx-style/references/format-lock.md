@@ -1,162 +1,59 @@
-# Format Lock
+# 总体技术方案模板排版规则
 
-Use this file when applying or auditing format. The document must be formatted by paragraph role, table role, and heading level. GJB 438C-2021 is the upper-level rule for document composition and numbering; the facts below were measured from the bundled template (`assets/1-2总体技术方案-模板参考.docx`) at XML level and are the DOCX implementation baseline.
+仅用于用户选择的`overall-technical-solution`项目模板。九章、以下样式/边距及表格封面属于`模板`规则，不是GJB438C对所有文档的规定。SRS使用[P-09配置](srs-p09-format-lock.md)，其他标准文档按其适用附录。通用内容、页码与裁剪要求见[通用矩阵](gjb438c-2021-requirements.md)。
 
-## GJB 438C General Composition Rules
+## 组成、分页与来源边界
 
-Every generated or repaired document should be evaluated against the GJB 438C-2021 composition model:
+保留封面、真实修改历史、目录、正文以及适用的附录。封面不能虚构密级、签名、批准或项目值；无来源的修改历史不能编造。附录用A、B等标记并在正文引用。图表清单按阅读需要增加。
 
-1. Cover: include document number, version/revision/volume number when available, classification, document name, system/software identifier, preparing organization, author/reviewer/countersignature/approver when available, and date.
-2. Modification page: preserve or add modification history when source data exists; record reason, content, version/revision, date, and responsible party where available.
-3. Table of contents: use a real Word TOC field, not static text. TOC should include chapters, clauses, appendices, and page numbers. Add figure/table/note lists only when requested or present in source material.
-4. Body: structure follows the detected document type. `overall-technical-solution` uses the nine-chapter template; standard GJB documents use their corresponding appendix outline.
-5. Appendices: preserve separately maintainable figures, tables, classified data, or detailed lists as appendices when source material contains them. Appendix identifiers use capital letters such as A and B and should be referenced from the body.
-6. Tailoring: do not silently delete required chapters or clauses. If a section is omitted by lifecycle, contract, or actual project activity, mark it as `本章无内容` or `本条无内容` and state the reason.
+本模板采用A4（11906×16838 twips）、前置材料与正文两个分节；分节数是模板实现。原模板前置节为`upperRoman`且可隐藏首页，这不等于符合标准。声明按GJB438C生成时按4.3.7.1使用正文前小写罗马顺序页号、正文/附录阿拉伯页号，每页有唯一页号。封面页号不能因`titlePg`而无检查地隐藏；原模板或用户明确要求保留的差异应列明。
 
-## Paragraph Style Map
+使用原生PAGE域，正文从1重启。页眉页脚引用及分节必须有效；不手打页码。字段缓存不等于最终结果，Word/WPS更新域后再目视核验。真实目录域默认为`TOC \o "1-3" \h \z`，不能以静态目录文字冒充可更新目录。
 
-| Role | Required Style |
+## 段落角色与样式
+
+| 角色 | 模板样式 |
 |---|---|
-| Cover number/classification line | `编号密级` |
-| Cover document-class line (项目技术文件) | `文头字` |
-| Cover document identifier line (SJZT-XXXX-NNNN-ZF【YYYY/MM/DD】) | `文件标识号` |
-| Cover document title (总体技术方案) | `文件名称` |
-| Cover issuing unit and date | `单位名称` |
-| TOC title (目 录) | `311-目录标题` |
-| TOC level 1 | `toc 1` |
-| TOC level 2 | `toc 2` |
-| TOC level 3 | `toc 3` |
-| First-level heading | `Heading 1` |
-| Second-level heading | `Heading 2` |
-| Third-level heading | `Heading 3` |
-| Fourth-level heading | `Heading 4` |
-| Fifth-level heading | `Heading 5` |
-| Normal body paragraph | `145正文` |
-| Figure placeholder paragraph (holds the image) | `145图样式` |
-| Figure caption | `Caption` |
-| Table caption | `Caption` |
-| Table header cell paragraph | `145表头` |
-| Table body cell paragraph | `145表正文` |
+| 封面编号/密级 | `编号密级` |
+| 项目技术文件行 | `文头字` |
+| 文档标识 | `文件标识号` |
+| 文档名称 | `文件名称` |
+| 单位/日期 | `单位名称` |
+| 目录标题 | `311-目录标题` |
+| 目录层次 | `toc 1`、`toc 2`、`toc 3` |
+| 1–5级标题 | `Heading 1`至`Heading 5` |
+| 正文 | `145正文` |
+| 图片段落 | `145图样式` |
+| 图表题注 | `Caption` |
+| 表头/表体 | `145表头`、`145表正文` |
 
-Forbidden styles for generated content: `DB表头` and `DB表正文` are defined in the template style sheet but are never used in the document body. Do NOT apply them; they exist only for template completeness. Also do not use `Normal` for visible body text.
+`DB表头`、`DB表正文`只是模板中遗留的未用样式，不用于本配置的生成内容；普通正文不应落入`Normal`。这些是模板一致性规则，不是GJB标准原文。
 
-## Heading Auto-Numbering Rule (critical)
-
-`Heading 1` through `Heading 5` are bound to the multilevel list `numId=1` (`%1`, `%1.%2`, `%1.%2.%3`, ...). Word renders the chapter numbers automatically.
-
-- Heading paragraph TEXT must NOT contain a typed number prefix. Write `概述`, not `1 概述`; write `逻辑架构设计`, not `3.2 逻辑架构设计`.
-- Writing a typed number produces double numbering ("1 1 概述") and is an audit failure.
-- Heading level is decided by semantic level of the section, never by parsing numbers out of the text.
-
-## Measured Style Facts (line-level audit baseline)
-
-| Style | East Asian font | Size | Key paragraph format |
-|---|---|---|---|
-| `Heading 1` | 黑体 | 14pt (sz 28) | keepNext, keepLines, line 560 exact, after 120, multilevel ilvl 0 |
-| `Heading 2` | 黑体 | 14pt | same, multilevel ilvl 1 |
-| `Heading 3` | 黑体 | 14pt | same, multilevel ilvl 2 |
-| `Heading 4` | 宋体 bold | 14pt | same, multilevel ilvl 3 |
-| `Heading 5` | 宋体 bold | 14pt | same, multilevel ilvl 4 |
-| `145正文` | 宋体 (ASCII Times New Roman) | 14pt | first-line indent 2 chars, line 560 exact, justified |
-| `145图样式` | inherits 145正文 | 14pt | based on 145正文, centered, no first-line indent, keepNext, single line spacing |
-| `Caption` | 黑体 | 12pt (sz 24) | centered, beforeLines 20, afterLines 20 |
-| `145表头` | 黑体 | 12pt | centered (based on 145表正文) |
-| `145表正文` | 宋体 | 12pt | centered, beforeLines 20, afterLines 20 |
-| `编号密级` | 黑体 | 14pt | centered, 1.5x-class spacing |
-| `311-目录标题` | 黑体 | 16pt (sz 32) | centered, before 240, after 360 |
-| `toc 1` | 宋体 | 12pt | line 440 exact |
-
-Page setup: A4 (11906 x 16838 twips). Two sections: the front-matter section uses roman page numbers implemented by the bundled template as `upperRoman` starting at 1 with `titlePg`; the body section has its own header and footer references and Arabic page-number fields. Do not remove or merge the section break.
-
-## Page Number and Footer Rules
-
-The template page-number structure is part of the GJB438C format lock and must be preserved at OOXML level.
-
-| Area | Required structure |
+| 样式 | 模板实测主要格式 |
 |---|---|
-| Page size | Every section uses A4 page size, `w:pgSz w="11906" h="16838"` |
-| Section count | Exactly two `w:sectPr` blocks: front matter and body |
-| Front-matter page numbering | First section has `w:pgNumType fmt="upperRoman" start="1"` |
-| Front-matter first page behavior | First section has `w:titlePg`; the title page can have no visible page number |
-| Front-matter default footer | Default footer contains a native Word `PAGE` field with instruction text containing `PAGE` and centered paragraph alignment |
-| Body header/footer ownership | Body section preserves template header/footer references and must not be merged into the front-matter section |
-| Body page numbering | Body page number is a native Word `PAGE` field in the body footer; cached field result text such as `22` is not authoritative |
-| Body page-number visual pattern | Body footer keeps the template `— PAGE —` pattern: a leading em dash text run, a `PAGE` field, and a trailing em dash text run |
-| Field refresh | `word/settings.xml` includes `w:updateFields w:val="true"` so Word/WPS can refresh TOC and page-number fields on open |
+| Heading 1–3 | 黑体14pt；keepNext/keepLines；固定行距560 twips，段后120 twips；对应多级编号层级 |
+| Heading 4–5 | 宋体加粗14pt；其余同标题规则 |
+| 145正文 | 宋体，西文Times New Roman，14pt；首行约2字；固定560 twips行距；两端对齐 |
+| 145图样式 | 继承正文、居中、无首行缩进、keepNext、单倍行距 |
+| Caption | 黑体12pt、居中；模板段前/后`beforeLines=20`、`afterLines=20` |
+| 145表头 | 黑体12pt、居中，基于表正文 |
+| 145表正文 | 宋体12pt、居中；沿用模板段前后设置 |
+| 编号密级 | 黑体14pt、居中、模板1.5倍行距 |
+| 311-目录标题 | 黑体16pt、居中；段前240/段后360 twips |
+| toc 1 | 宋体12pt、固定440 twips行距 |
 
-Implementation notes:
+## 标题、表图与内容映射
 
-- Never hand-type visible page numbers in normal paragraphs or footer text as the source of truth.
-- Never replace the `PAGE` field with cached text, even if the cached value looks correct.
-- For documents split into multiple volumes, restart numbering per volume only when the source contract or volume metadata requires it.
-- When generating from structured content, replace body content only from the first `Heading 1` onward and leave the cover, TOC, section break, header references, footer references, and page-number fields intact.
-- If a renderer shows stale page numbers, refresh fields in Word/WPS; do not alter the OOXML field structure merely to match a cached display value.
+Heading 1–5绑定模板多级编号（常见`numId=1`）；复制后需核验实际有效编号引用，不能只凭固定ID推断。标题文字不含手打数字，避免“1 1 概述”。标题级别由语义层次决定。
 
-## Line-Level Rules
+九个一级章名及顺序见[总体方案结构](template-structure.md)，仅对该配置执行九章检查。内容重排按所属二级章节映射；如果正确归属不明确，记录待确认，不把来源硬塞到最近标题。纯格式修复保留现有语义结构。
 
-- Every visible paragraph must map to a role in the style map.
-- Do not create new styles for project-specific content.
-- Do not rely on manual font overrides where a template paragraph style exists.
-- Do not introduce environment-specific absolute paths into generated documents or repository files.
-- Blank spacing should come from the template styles, not manual empty paragraph stacks.
-- Heading paragraphs never carry typed numbers (see Heading Auto-Numbering Rule).
-- Every figure occupies its own `145图样式` paragraph, immediately followed by a `Caption` paragraph.
-- Use `Caption` for caption lines. Caption numbering is chapter-based: `图 X-Y 名称` for figures and `表X-Y 名称` (or `表 X-Y 名称`) for tables, where X is the chapter number and Y is the per-chapter sequence.
-- Use `145正文` for explanatory text, requirement descriptions, assumptions, constraints, and implementation descriptions.
-- Inline enumerations inside body text follow the template pattern `（1）`, `（2）`, ... as plain `145正文` paragraphs, not list styles.
+图独占`145图样式`段落，题注与图相邻；表题在表前，默认按章编号`图X-Y`、`表X-Y`。新表优先用有边框的`Table Grid1`；表头和表体用对应角色样式。实际表结构按术语、接口、软硬件、测试、职责、进度等信息需要选取，不能以模板列名代替内容完整性审查。
 
-## Second-Level Alignment Rule
+不利用空白段落堆叠分页，不把本机绝对路径带入交付正文。正文的列举使用可维护段落/编号格式；空格对齐不能代替表格或制表位。需要清除的旧业务值必须先区分当前真实业务，不能仅凭关键词一律删除。
 
-Second-level headings are the formatting control unit:
+## 裁剪与核验
 
-- Do not add arbitrary first-level chapters.
-- Do not let third-level headings replace a required second-level section.
-- Keep every table, caption, interface list, or resource list inside its owning second-level section.
-- If source content has a different structure, remap it into the nearest existing second-level section.
-- For project-specific分系统 content, use `4.x` second-level headings and keep each section's internal writing pattern consistent.
+根据4.4，裁剪章条在对应最高标题下注明无内容及理由；整子树裁剪可由最高节点一次说明，不要求每个子条重复。合并文档保持完整要素并注释，拆分文档各自满足组成要求且要素一致；不得从未知资料推断不适用。
 
-## Table Rules
-
-- The first table row is always header content and uses `145表头`.
-- All subsequent rows use `145表正文`.
-- Captions should be separate paragraphs before the table and use `Caption`, numbered `表X-Y`.
-- Table style in the template is `Normal Table` or `Table Grid1`; generated tables should use `Table Grid1` so borders render.
-- Use template table schemas when possible:
-  - Term: `编号`, `名称`, `说明`
-  - Abbreviation: `序号`, `简写`, `全称`, `解释说明`
-  - Standard/spec list: `序号`, `分类`, `名称`, `遵循修订`, `拓展新撰`
-  - Interface: `序号`, `接口名称`, `发送方`, `接收方`, `接口描述`, `接口协议`
-  - Hardware: `序号`, `名称`, `型号规格`, `计量单位`, `数量`
-  - Software: `序号`, `软件类型`, `软件项名称`, `版本`, `数量`
-  - Test data: `分类`, `数据类型`, `数据表`
-  - Organization: `序号`, `单位名称`, `项目分工`, `负责人`, `备注`
-  - Schedule: `序号`, `任务名称`, `开始时间`, `完成时间`
-
-## Front Matter Rules
-
-- The cover is a table (not free paragraphs) whose cells use the cover styles listed in the style map. Keep the template's cover table and replace only the cell texts.
-- If the target document has a modification-history page/table, place it after the cover and before the TOC. If the source lacks modification history, warn during strict GJB composition audit rather than inventing entries.
-- The table of contents is a real Word `TOC \o "1-3" \h \z` field preceded by a `311-目录标题` paragraph. Never fake the TOC with plain text; keep the field so Word/WPS can refresh it.
-- The TOC should cover chapters, clauses, and appendices. Figure/table lists are optional and should be added only when requested or when source material already contains them.
-- Keep the section break between front matter and body so roman page numbering and body headers/footers survive.
-
-## Document Type and Tailoring Rules
-
-- Overall technical solution documents use the nine fixed first-level chapters in `template-structure.md`.
-- Standard GJB 438C document types (`SDP`, `SIP`, `STrP`, `STP`, `OCD`, `SSS`, `IRS`, `SSDD`, `IDD`, `SRS`, `SDD`, `DBDD`, `STD`, `STR`, `SPS`, `SVD`, `SUM`, `CPM`, `FSM`, `SDSR`) use the corresponding appendix outline listed in `gjb438c-2021-requirements.md`.
-- Strict nine-chapter checking is valid only for `overall-technical-solution`; do not apply it to standard GJB documents unless the user explicitly asks to use the project template.
-- When combining or splitting documents, preserve cover, modification history, TOC, body, appendix, page-number, and clause-number elements for each resulting document.
-
-## Audit Failure Conditions
-
-Treat the output as non-compliant when:
-
-- In `overall-technical-solution` mode, any first-level heading is missing, renamed, or reordered (compare by unnumbered chapter names).
-- A standard GJB document is incorrectly forced into the overall technical solution's nine-chapter structure.
-- Any heading paragraph text starts with a typed number prefix such as `1 ` or `3.2 ` (double-numbering).
-- A numbered-level heading uses the wrong `Heading N` style for its semantic level.
-- Normal paragraphs use `Normal` instead of `145正文`.
-- Table cell paragraphs do not use `145表头` (header row) or `145表正文` (body rows).
-- Figure placeholder paragraphs do not use `145图样式`.
-- Legacy template business terms remain in the final document.
-- The document contains local machine paths such as macOS user-home paths, Linux home-directory paths, or Windows user-profile paths.
+核查所选模板结构、标题编号、角色样式、字段/引用、页码、表图和遗留内容，报告每个发现属于标准、模板还是增强规则。模板偏差与标准不符合分开；普通格式修复不等于完成全文语义审核。最终视觉检查未运行时记为`not_run`，不据脚本成功宣称“评审级”。

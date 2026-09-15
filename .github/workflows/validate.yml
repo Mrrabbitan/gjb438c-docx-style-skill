@@ -11,6 +11,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.9", "3.11"]
+        exclude:
+          - os: macos-latest
+            python-version: "3.9"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +22,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: python -m pip install -e .
+      - name: Run regression tests
+        run: python -m unittest discover -s tests -v
       - name: Validate skill bundle
         run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py --skill-dir gjb438c-docx-style --validate-skill
       - name: Generate demo document
@@ -29,5 +34,17 @@ jobs:
         run: python gjb438c-docx-style/scripts/apply_gjb438c_template.py --demo --document-type SDP --output build/gjb438c-sdp-demo.docx
       - name: Audit standard GJB document-type demo
         run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/gjb438c-sdp-demo.docx --strict-tables
+      - name: Generate SRS draft demo
+        run: python gjb438c-docx-style/scripts/apply_gjb438c_template.py --demo --document-type SRS --mode draft --output build/srs-draft.docx
+      - name: Audit SRS draft demo
+        run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/srs-draft.docx --document-type SRS --json
+      - name: Build complete SRS review fixture
+        run: python tools/build_srs_fixture.py --output build/srs-review.json
+      - name: Generate SRS review fixture
+        run: python gjb438c-docx-style/scripts/apply_gjb438c_template.py --content-json build/srs-review.json --document-type SRS --mode review --output build/srs-review.docx
+      - name: Audit SRS review fixture with source model
+        run: python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/srs-review.docx --document-type SRS --strict-srs --content-json build/srs-review.json --json
       - name: Install skill to temporary directory
         run: python tools/install_skill.py --dest build/skills --force
+      - name: Validate installed skill
+        run: python build/skills/gjb438c-docx-style/scripts/audit_gjb438c_docx.py --skill-dir build/skills/gjb438c-docx-style --validate-skill
