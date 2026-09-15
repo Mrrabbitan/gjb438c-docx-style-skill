@@ -1,21 +1,21 @@
-# Template Structure
+# 总体技术方案模板结构
 
-Use this file when planning or restructuring document content. Apply the fixed nine-chapter structure only when the document type is `overall-technical-solution`. For standard GJB 438C-2021 software life-cycle documents, first use `references/gjb438c-2021-requirements.md` to identify the document type and its appendix, then map content to that document type instead of forcing the overall technical solution chapters.
+仅用于用户选用`overall-technical-solution`项目模板时的规划或内容重排。SRS使用[附录J](srs-appendix-j.md)与[P-09配置](srs-p09-format-lock.md)，其他标准文档使用对应附录。九章和模板样式不属于标准对所有软件文档的要求。
 
-Heading numbers shown below are for reference only. Heading paragraph text must NOT contain typed numbers; the template's multilevel list numbering renders them automatically (see `format-lock.md`).
+下方数字用于说明层级。实际Word标题用多级编号自动生成，不在标题文字中重复手打数字，见[格式规则](format-lock.md)。
 
-## Applicability Decision
+## 适用性判断
 
-| User request / source document | Structure rule |
+| 用户选择/文档类型 | 结构规则 |
 |---|---|
-| Overall technical solution, `1-2总体技术方案`, project technical scheme, or the bundled project template | Use the fixed nine first-level chapters below. |
-| Standard GJB 438C document type such as `SDP`, `SRS`, `SDD`, `STP`, `STD`, `STR`, `SUM`, etc. | Use the corresponding appendix format from GJB 438C-2021. Do not enforce the nine-chapter framework. |
-| Style-only repair of an existing DOCX | Preserve the document's existing semantic structure and repair formatting only. |
-| Tailored or combined document | Keep required elements complete where included; mark omitted chapters/clauses as `本章无内容` or `本条无内容` with a reason. |
+| 用户选用本项目的总体技术方案模板`1-2总体技术方案` | 使用下方九章；不能仅因名称中含“技术方案”就覆盖用户原结构。 |
+| GJB标准文档类型，如SDP、SRS、SDD、STP、STD、STR、SUM等 | 使用对应附录，不执行九章检查。 |
+| 已有DOCX纯格式修复 | 保留现有语义结构，只修格式。 |
+| 裁剪或合并文档 | 根据4.4保持保留标题的标准顺序及要素完整；裁剪最高节点写`本章无内容`或`本条无内容`并说明理由，整个子树已裁剪时不重复列下级标题。未知内容不能自动当作不适用。 |
 
-## GJB 438C Document Type Index
+## 文档类型路由索引
 
-The standard identifies 20 principal document types. Use this index for routing; consult `gjb438c-2021-requirements.md` before generating a standard GJB document.
+标准列出20种主要文档。以下索引只用于路由；编写其他类型前读取对应附录，不能宣称本skill已实现其全文语义检查。详见[通用矩阵](gjb438c-2021-requirements.md)。
 
 | Abbr. | Chinese document name | Appendix |
 |---|---|---|
@@ -40,9 +40,9 @@ The standard identifies 20 principal document types. Use this index for routing;
 | FSM | 固件保障手册 | S |
 | SDSR | 软件研制总结报告 | T |
 
-## Front Matter (before chapter 1)
+## 正文前置材料
 
-The template front matter must be preserved in this order:
+前置材料沿用下列角色和顺序，项目值必须由来源替换，不能继承示例编号或日期：
 
 1. Cover table (a real table, not free paragraphs) with five elements:
    - number/classification line (`编号密级`)
@@ -50,12 +50,13 @@ The template front matter must be preserved in this order:
    - document identifier `SJZT-XXXX-NNNN-ZF【YYYY/MM/DD】` (`文件标识号`)
    - document title `总体技术方案` (`文件名称`)
    - issuing unit and date, e.g. `技术总师组` + `2024年4月` (`单位名称`)
-2. TOC title `目    录` (`311-目录标题`) followed by a real Word `TOC \o "1-3" \h \z` field.
-3. A section break: the front-matter section uses upperRoman page numbers with `titlePg`; the body section carries its own headers/footers. Never delete this break.
+2. 有实际修改历史时保留修改页/表；未知时记录缺口，不编造初版批准。
+3. 目录标题`目    录`（`311-目录标题`）及真实Word `TOC \o "1-3" \h \z`域。
+4. 保留前置材料与正文分节；原模板`upperRoman`是源模板状态。符合4.3.7.1的生成规则为正文前小写罗马页码、正文/附录阿拉伯页码，每页唯一；首页不能因`titlePg`被无检查地隐藏。
 
-## Fixed First-Level Chapters
+## 总体方案一级章名
 
-This section is mandatory only for `overall-technical-solution`.
+仅在选择`overall-technical-solution`模板时使用。
 
 1. `1 概述`
 2. `2 使用与技术指标要求`
@@ -67,7 +68,7 @@ This section is mandatory only for `overall-technical-solution`.
 8. `8 工程组织管理`
 9. `9 初步工作计划`
 
-## Required Second-Level Framework
+## 总体方案二级结构
 
 ### 1 概述
 
@@ -128,7 +129,7 @@ This section is mandatory only for `overall-technical-solution`.
 
 - Use a milestone table aligned to the template's `序号`, `任务名称`, `开始时间`, `完成时间` pattern.
 
-## Table Patterns
+## 常用表格结构
 
 - Terminology table: `编号`, `名称`, `说明`
 - Abbreviation table: `序号`, `简写`, `全称`, `解释说明`
@@ -142,9 +143,9 @@ This section is mandatory only for `overall-technical-solution`.
 
 Table header cells use `145表头`; table body cells use `145表正文`. Captions before tables use `Caption` with chapter-based numbering `表X-Y`.
 
-## Legacy Content Guardrail
+## 旧业务内容辨识
 
-The template contains old example business terms. Do not reuse them as content:
+模板含有以下旧业务示例。 仅当确认为遗留示例时移除，不从模板复制为当前业务；若已由当前来源证实则以来源为准：
 
 - `ZBZQ`
 - `XX数据中台`

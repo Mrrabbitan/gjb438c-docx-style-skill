@@ -1,4 +1,6 @@
 interface:
-  display_name: "GJB438C DOCX Style"
-  short_description: "GJB 438C-2021 DOCX generation, formatting, and audit"
-  default_prompt: "Use $gjb438c-docx-style to generate, repair, or audit a GJB 438C-2021 DOCX. First identify the document type, then apply either the overall technical solution template or the matching standard GJB document format."
+  display_name: "GJB 438C SRS DOCX"
+  short_description: "Draft or review GJB 438C SRS documents and audit evidence"
+  default_prompt: "Use $gjb438c-docx-style to create, repair, or audit this GJB 438C-2021 document. For SRS, select draft or review mode, distinguish Appendix J content obligations from the sanitized P-09 template's formatting choices, and verify requirement identifiers, qualification methods, bidirectional traceability, source evidence, package integrity, and every rendered page. Keep unknown project facts unresolved. Report unperformed checks as not checked and never equate a script pass with review approval. When useful, assign bounded independent review roles while the primary agent owns the canonical content and DOCX."
+policy:
+  allow_implicit_invocation: true
