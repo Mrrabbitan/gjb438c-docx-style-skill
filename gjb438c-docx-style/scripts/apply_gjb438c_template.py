@@ -1062,7 +1062,8 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft", writ
     def function_list(rows, items, caption):
         entries = [[r["node"]["id"], r["node"]["name"], r["node"].get("overview") or r["node"].get("purpose", ""), DEVELOPMENT_LABELS.get(r["node"].get("development_status"), "未提供"), r["node"].get("development_basis", "未提供"), r["physical_clause"]] for r in rows]
         entries.extend([req["id"], req.get("name") or req["id"], req["statement"], "见所属模块", "、".join(req.get("source_ids", [])), req.get("physical_clause", "")] for req in items)
-        return {"caption": "表 " + caption, "headers": ["唯一标识", "名称", "能力或功能需求", "研制状态", "依据或来源", "正文位置"], "rows": entries}
+        entries = [[str(index), row[1], row[0], row[2], row[3], row[4] + "\n正文：" + row[5]] for index, row in enumerate(entries, 1)]
+        return {"caption": "表 " + caption, "headers": ["序号", "名称", "唯一标识", "需求描述", "研制状态", "依据及正文位置"], "rows": entries}
 
     if profile == "training-review" and outline:
         sections[-1]["tables"].append(function_list([r for r in outline if r["level"] == 3], [], "系统功能需求清单"))

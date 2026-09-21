@@ -101,6 +101,21 @@ class AuthoringTests(unittest.TestCase):
         model = training_model(); model["source_requirements"][0]["kind"] = "plan"
         self.assertIn("SRS-AUTHORING-CONTRACT-KIND", self.rules(model))
 
+    def test_contract_derivation_requires_contract_parent(self):
+        model = training_model()
+        model["requirements"][0]["contract_trace"].update(status="derived", basis="从父条款细化记录查询边界")
+        model["source_requirements"][0]["kind"] = "plan"
+        self.assertIn("SRS-AUTHORING-CONTRACT-KIND", self.rules(model))
+
+    def test_contract_derivation_keeps_pending_baseline_and_basis(self):
+        model = training_model()
+        model["requirements"][0]["contract_trace"].update(status="derived", basis="从父条款细化记录查询边界")
+        model["source_requirements"][0]["confirmation"] = "pending"
+        self.assertIn("SRS-AUTHORING-CONTRACT-BASELINE", self.rules(model))
+        self.assertFalse(self.rules(model, "draft"))
+        model["requirements"][0]["contract_trace"].pop("basis")
+        self.assertIn("SRS-AUTHORING-CONTRACT-DISPOSITION", self.rules(model))
+
     def test_word_depth_limit_is_explicit_without_flattening(self):
         model = valid_model()
         model["capabilities"] = [{"id": "N" + str(i), "name": "节点" + str(i), **({"parent_id": "N" + str(i - 1)} if i else {})} for i in range(7)]
@@ -152,8 +167,8 @@ class AuthoringTests(unittest.TestCase):
             model = training_model(); path = Path(folder) / "function.docx"
             generator.build_document(generator.SRS_TEMPLATE, model, path, "review")
             doc = Document(path)
-            table = next(t for t in doc.tables if t.rows[0].cells[0].text == "唯一标识")
-            table.rows[1].cells[0].text = "UNRELATED"
+            table = next(t for t in doc.tables if t.rows[0].cells[0].text == "序号" and t.rows[0].cells[2].text == "唯一标识")
+            table.rows[1].cells[2].text = "UNRELATED"
             doc.save(path)
             report = audit_docx(path, document_type="SRS", mode="draft", content=model)
             self.assertIn("SRS.MODEL_FUNCTION_LIST", {f["rule_id"] for f in report.findings})
