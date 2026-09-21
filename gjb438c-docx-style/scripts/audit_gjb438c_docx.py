@@ -403,9 +403,13 @@ def audit_gjb_composition(path: Path, document: Document, result: AuditResult, s
         result.add_error("Document must preserve a real Word TOC field instead of static TOC text")
     elif document_type == "SRS":
         instruction = toc_instruction(path, result)
-        for token in ['1-3', r'\h', r'\z', r'\u']:
+        for token in [r'\h', r'\z', r'\u']:
             if token.lower() not in instruction.lower():
                 result.add_error(f"SRS TOC field is missing required switch/token {token}")
+        depth = max([int(m.group(1)) for p in document.paragraphs if p.style and (m := re.fullmatch(r"Heading ([1-9])", p.style.name, re.I))] or [1])
+        declared = re.search(r'\\o\s+"1-([1-9])"', instruction)
+        if declared is None or int(declared.group(1)) < depth:
+            result.add_error(f"SRS TOC range must include the actual heading depth {depth}", rule_id="PROFILE.TOC_DEPTH", source="template")
 
     full_visible_text = "\n".join(paragraph_texts(document))
     if not any(token in full_visible_text for token in ["修改页", "修改记录", "修改历史", "修订记录", "变更记录"]):
@@ -573,7 +577,7 @@ def audit_srs_semantics(path: Path, document: Document, result: AuditResult, str
 def audit_docx(path: Path, strict_secondary: bool = False, strict_tables: bool = False,
                strict_overall: bool = False, strict_gjb_composition: bool = False,
                document_type: str | None = None, strict_srs: bool = False,
-               mode: str = "draft", template_profile: str = "auto", content: dict | None = None) -> AuditResult:
+               mode: str = "draft", template_profile: str = "auto", content: dict | None = None, writing_profile: str | None = None) -> AuditResult:
     result = AuditResult()
     try:
         if not path.is_file() or not zipfile.is_zipfile(path):
@@ -611,6 +615,11 @@ def audit_docx(path: Path, strict_secondary: bool = False, strict_tables: bool =
             if term in full_text:
                 result.add_error(f"Legacy template term remains: {term}", rule_id="PROFILE.PLACEHOLDER", source="template")
         if document_type == "SRS":
+            from srs_authoring import writing_profile as select_writing_profile
+            selected_writing = select_writing_profile(content or {}, writing_profile)
+            result.metrics["writing_profile"] = selected_writing
+            if content is not None:
+                content = dict(content, writing_profile=selected_writing)
             audit_srs_semantics(path, document, result, mode == "review", profile, content)
             return result
 
@@ -730,6 +739,8 @@ def validate_skill(skill_dir: Path) -> AuditResult:
         skill_dir / "scripts" / "apply_gjb438c_template.py",
         skill_dir / "scripts" / "audit_gjb438c_docx.py",
         skill_dir / "scripts" / "srs_model.py",
+        skill_dir / "scripts" / "srs_authoring.py",
+        skill_dir / "references" / "srs-training-review.md",
         skill_dir / "scripts" / "srs_docx_audit.py",
     ]
     for path in required_paths:
@@ -772,7 +783,7 @@ def validate_skill(skill_dir: Path) -> AuditResult:
             except Exception as exc:
                 result.add_error(f"Invalid JSON reference {json_path}: {exc}")
 
-    for script_name in ["apply_gjb438c_template.py", "audit_gjb438c_docx.py", "srs_model.py", "srs_docx_audit.py"]:
+    for script_name in ["apply_gjb438c_template.py", "audit_gjb438c_docx.py", "srs_model.py", "srs_docx_audit.py", "srs_authoring.py"]:
         script_path = skill_dir / "scripts" / script_name
         if script_path.exists():
             try:
@@ -827,6 +838,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--strict-srs", action="store_true", help="Alias for SRS review-mode machine checks; does not certify semantic/visual readiness.")
     parser.add_argument("--mode", choices=["draft", "review"], default="draft", help="SRS missing-information policy (default: draft).")
     parser.add_argument("--template-profile", choices=["auto", "standard", "SRS-P09"], default="auto", help="Keep Appendix J content checks separate from selected-template checks.")
+    parser.add_argument("--writing-profile", choices=["training-review", "gjb-standard"], help="Writing convention independent of missing-information mode.")
     parser.add_argument("--content-json", type=Path, help="Independent source/requirement model to validate and compare to the saved SRS.")
     parser.add_argument("--json", action="store_true", help="Print machine-readable audit output.")
     return parser.parse_args()
@@ -866,7 +878,7 @@ def main() -> int:
                 strict_gjb_composition=args.strict_gjb_composition,
                 document_type=args.document_type,
                 strict_srs=args.strict_srs,
-                mode=args.mode, template_profile=args.template_profile, content=content,
+                mode=args.mode, template_profile=args.template_profile, content=content, writing_profile=args.writing_profile,
             ))
         if not results:
             raise ValueError("Provide a DOCX path and/or --validate-skill --skill-dir")

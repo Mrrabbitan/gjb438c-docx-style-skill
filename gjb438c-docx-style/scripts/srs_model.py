@@ -72,7 +72,7 @@ def external_target_key(target: dict[str, str]) -> str:
     return "IRS:" + json.dumps([target["reference_id"], target["requirement_id"], target["location"]], ensure_ascii=False, separators=(",", ":"))
 
 
-def validate_srs_content(content: Any, mode: str = "draft") -> list[dict[str, Any]]:
+def validate_srs_content(content: Any, mode: str = "draft", writing_profile: str | None = None) -> list[dict[str, Any]]:
     """Return located findings. Draft tolerates incompleteness, never bad types.
 
     Callers may pass legacy content; it is normalized on a private copy. Passing
@@ -375,21 +375,64 @@ def validate_srs_content(content: Any, mode: str = "draft") -> list[dict[str, An
                 add("SRS-TBD-CLOSURE", "已关闭的未决事项缺少关闭证据", f"/tbd/{i}", object_id=tid)
         else:
             add("SRS-TBD-OPEN", "未决事项尚未关闭", f"/tbd/{i}", object_id=tid)
-    # Every unresolved marker outside the register must name a real open item,
-    # either in the text or by an affected-id link. An empty table is insufficient.
-    def scan(value: Any, path: list[Any], owner: str = "") -> None:
+    # Resolve a marker within its owning record. A sibling basis or explicit
+    # tbd_ids may control that record; unrelated root-level notes never do.
+    # Referencing a closed TBD does not resolve still-unresolved prose.
+    tbd_token = re.compile(r"(?<![A-Za-z0-9_])TBD[-_][A-Za-z0-9_-]+", re.I)
+    open_tbds = {tid for tid, row in tbds.items() if row.get("status", "").lower() not in {"closed", "resolved", "已关闭", "已解决"}}
+
+    def record_links(record: dict) -> set[str]:
+        links = set(record.get("tbd_ids", []))
+        for item in record.values():
+            if isinstance(item, str):
+                links.update(tbd_token.findall(item))
+        return links
+
+    def source_links(source_id: str) -> set[str]:
+        source = sources.get(source_id, {})
+        # A source's file-identity uncertainty belongs to its explicitly linked
+        # reference, never to an unrelated global "all documents" note.
+        return record_links(source) | record_links(references.get(source.get("reference_id"), {}))
+
+    def scan(value: Any, path: list[Any], owner: str = "", context: frozenset = frozenset()) -> None:
         if isinstance(value, dict):
-            owner = value.get("id", owner)
+            record = len(path) == 2 and isinstance(path[1], int)
+            owner = value.get("id", value.get("number", value.get("requirement_id", owner)))
+            links = set() if record else set(context)
+            if record and path[0] == "source_requirements":
+                links.update(record_links(references.get(value.get("reference_id"), {})))
+            if record and path[0] in {"forwardTrace", "reverseTrace"}:
+                source_ids = value.get("source_ids", []) or ([value["source"]] if value.get("source") else [])
+                for source_id in source_ids:
+                    links.update(source_links(source_id))
+            if path:
+                for key, child in value.items():
+                    if isinstance(child, str):
+                        links.update(tbd_token.findall(child))
+                    elif key == "tbd_ids" and isinstance(child, list):
+                        links.update(child)
+                links.update(tid for tid, row in tbds.items() if owner and owner in row.get("affected_ids", []))
             for key, child in value.items():
-                if not path and key == "tbd": continue
-                scan(child, path + [key], owner)
+                if not path and key == "tbd":
+                    continue
+                if key == "tbd_ids" and isinstance(child, list):
+                    for tid in child:
+                        if tid not in tbds:
+                            add("SRS-TBD-UNKNOWN", "显式TBD引用未登记：" + tid, _pointer(path + [key]), object_id=owner, hard=True)
+                scan(child, path + [key], owner, frozenset(links))
         elif isinstance(value, list):
-            for i, child in enumerate(value): scan(child, path + [i], owner)
-        elif isinstance(value, str) and re.search(r"待确认|待补充|待定|\bTBD(?:\b|[-：:])", value, re.I):
-            linked = any(tid in value or owner in row.get("affected_ids", []) for tid, row in tbds.items())
-            if not linked:
-                add("SRS-TBD-UNLINKED", "未决标记没有关联具体 TBD 记录", _pointer(path), object_id=owner)
+            for i, child in enumerate(value):
+                scan(child, path + [i], owner, context)
+        elif isinstance(value, str):
+            tokens = set(tbd_token.findall(value))
+            for tid in tokens - set(tbds):
+                add("SRS-TBD-UNKNOWN", "未决标识未登记：" + tid, _pointer(path), object_id=owner, hard=True)
+            if re.search(r"待确认|待补充|待定|\bTBD(?:\b|[-：:])", value, re.I):
+                if not ((tokens | set(context)) & open_tbds):
+                    add("SRS-TBD-UNLINKED", "未决标记没有关联本对象的开放TBD记录", _pointer(path), object_id=owner)
     scan(model, [])
+    from srs_authoring import validate_authoring, writing_profile as select_profile
+    issues.extend(validate_authoring(model, mode, select_profile(model, writing_profile)))
     return issues
 
 
@@ -402,10 +445,10 @@ class SrsValidationError(ValueError):
         super().__init__("SRS model validation failed: " + "; ".join(f"{item['rule_id']} {item['location']}: {item['message']}" for item in errors))
 
 
-def require_valid_srs_content(content: Any, mode: str = "draft") -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def require_valid_srs_content(content: Any, mode: str = "draft", writing_profile: str | None = None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Convenience API for generators; does not modify caller-owned content."""
     model = normalize_srs_content(content)
-    issues = validate_srs_content(model, mode)
+    issues = validate_srs_content(model, mode, writing_profile)
     errors = [item for item in issues if item["severity"] == "error"]
     if errors:
         raise SrsValidationError(issues)

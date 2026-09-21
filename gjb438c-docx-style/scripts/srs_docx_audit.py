@@ -43,7 +43,7 @@ REGISTER_LABELS = {
     "protocol": ("协议",), "authentication": ("鉴权",), "exception": ("异常处理",),
     "precondition": ("前置条件",), "evidence": ("计划证据", "验证证据"),
     "status": ("状态",), "timing": ("时序",), "capacity": ("容量",), "version": ("版本",),
-    "security": ("保密性",), "kind": ("接口类别",), "irs_reference": ("受控IRS引用",),
+    "security": ("保密性",), "kind": ("接口类别", "来源类别"), "irs_reference": ("受控IRS引用",),
     "statement": ("陈述",), "reference_id": ("引用文件编号",), "location": ("定位",),
     "allocation": ("分配范围",), "disposition": ("处置",), "reason": ("原因",),
     "number": ("文档编号",), "title": ("标题",), "organization": ("编写单位",),
@@ -51,6 +51,9 @@ REGISTER_LABELS = {
     "normative": ("规范性引用",), "issue": ("未决事项",), "impact": ("影响范围",),
     "closure_condition": ("关闭条件",), "closure_evidence": ("关闭证据",),
     "affected_ids": ("受影响对象", "影响对象"), "due": ("期限",),
+    "overview": ("能力概述",), "order": ("同级顺序",), "physical_clause": ("物理章节",),
+    "development_status": ("研制状态",), "development_basis": ("研制状态依据",),
+    "confirmation": ("来源确认状态",), "tbd_ids": ("关联未决事项",),
 }
 REGISTER_IDS = {
     "states": ("标识", "状态编号"), "capabilities": ("标识", "能力编号"),
@@ -409,6 +412,12 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                     issue("SRS.UNRESOLVED_FACT", f"Unidentified unresolved fact: {text[:130]}", clause, source="review")
 
     if model:
+        from srs_authoring import capability_outline
+        try:
+            outline = capability_outline(model)
+        except ValueError:
+            outline = []  # The model validator already reports malformed trees.
+        capability_clauses = {r["node"]["id"]: r["physical_clause"] for r in outline}
         expected_reqs = {r["id"]: r for r in model.get("requirements", []) if isinstance(r, dict) and "id" in r}
         if set(expected_reqs) != set(formal):
             issue("SRS.MODEL_IDS", f"Saved DOCX/model requirement IDs differ: missing={sorted(set(expected_reqs)-set(formal))}, extra={sorted(set(formal)-set(expected_reqs))}", "J.3", source="implementation")
@@ -429,10 +438,15 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                                ("state_ids", "适用状态"), ("data_ids", "数据编号")):
                 if key in req and set(req[key]) != tokens(formal[rid].get(label)):
                     issue("SRS.MODEL_ATTRIBUTE", f"Saved {key} differs from model for {rid}", "J.3", rid, formal_locations[rid], "implementation")
-            expected_clause = str(req.get("clause", ""))
+            for key, label in (("contract_trace", "合同映射处置"), ("exception_applicability", "异常适用性"), ("exception_basis", "异常适用依据"), ("physical_clause", "物理章节")):
+                if key in req and not model_value_matches(req[key], formal[rid].get(label), key):
+                    issue("SRS.MODEL_ATTRIBUTE", f"Saved {key} differs from model for {rid}", "J.3", rid, formal_locations[rid], "implementation")
+            expected_clause = req.get("physical_clause") or capability_clauses.get(req.get("capability_id")) or str(req.get("clause", ""))
             actual_clause = formal_sections[rid]
             if actual_clause != expected_clause and not actual_clause.startswith(expected_clause + "."):
                 issue("SRS.MODEL_LOCATION", f"Requirement {rid} belongs to {expected_clause}, found at {actual_clause}", "J.3", rid, formal_locations[rid], "implementation")
+            if req.get("capability_id") in capability_clauses and actual_clause != capability_clauses[req["capability_id"]]:
+                issue("SRS.MODEL_CAPABILITY_LOCATION", f"Requirement {rid} must be directly under {capability_clauses[req['capability_id']]}, found {actual_clause}", "J.3.2", rid, formal_locations[rid], "implementation")
             iid = req.get("interface_id")
             if iid and iid in interfaces and interfaces[iid][1] != actual_clause:
                 issue("SRS.INTERFACE_GROUP", f"Requirement {rid} is not under its interface {iid}", "J.3.3", rid, formal_locations[rid], "implementation")
@@ -452,11 +466,47 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                 expected_clause = ("3.4" if expected.get("kind") == "internal" else "3.3") if group == "interfaces" else REGISTER_CLAUSES[group]
                 if actual_clause != expected_clause and not actual_clause.startswith(expected_clause + "."):
                     issue("SRS.MODEL_REGISTER_LOCATION", f"Saved {group} record {identifier} belongs under {expected_clause}, found {actual_clause}", object_id=identifier, location=actual_location, source="implementation")
+                if group == "capabilities" and identifier in capability_clauses and actual_clause != capability_clauses[identifier]:
+                    issue("SRS.MODEL_CAPABILITY_LOCATION", f"Capability {identifier} must be at {capability_clauses[identifier]}, found {actual_clause}", "J.3.2", identifier, actual_location, "implementation")
                 for key, value in expected.items():
                     labels = id_labels if key == id_key else REGISTER_LABELS.get(key, (key,))
                     label = next((name for name in labels if name in actual), None)
                     if label is None or not model_value_matches(value, actual[label], key):
                         issue("SRS.MODEL_REGISTER_VALUE", f"Saved {group}.{key} differs or is absent for {identifier}", object_id=identifier, location=actual_location, source="implementation")
+        from srs_authoring import writing_profile as select_writing_profile
+        if select_writing_profile(model) == "training-review" and outline:
+            expected_lists = {"3.2": {r["node"]["id"] for r in outline if r["level"] == 3}}
+            for entry in outline:
+                expected_lists[entry["physical_clause"]] = {r["node"]["id"] for r in outline if r["node"].get("parent_id") == entry["node"]["id"]} | {r["id"] for r in entry["requirements"]}
+            actual_lists = defaultdict(list)
+            for kind, obj, clause, location, _ in blocks:
+                if kind == "table" and obj.rows:
+                    headers = [c.text.strip() for c in obj.rows[0].cells]
+                    if headers[:3] == ["唯一标识", "名称", "能力或功能需求"]:
+                        actual_lists[clause].append([row.cells[0].text.strip() for row in obj.rows[1:]])
+            for clause, identifiers in expected_lists.items():
+                actual = actual_lists.get(clause, [])
+                if len(actual) != 1 or set(actual[0]) != identifiers or len(actual[0]) != len(identifiers):
+                    issue("SRS.MODEL_FUNCTION_LIST", "功能清单缺失、重复或与该层直属能力/需求不一致", clause, source="implementation")
+        expected_images = Counter()
+        actual_images = Counter()
+        paragraph_text = "\n".join(p.text for p in document.paragraphs)
+        for kind, obj, clause, location, _ in blocks:
+            if kind == "paragraph":
+                actual_images[clause] += len(obj._p.xpath(".//w:drawing"))
+        for figure in model.get("figures", []):
+            locations = [capability_clauses[c] for c in figure.get("capability_ids", []) if c in capability_clauses]
+            if figure.get("clause"):
+                locations.append(figure["clause"])
+            locations = list(dict.fromkeys(locations))
+            for clause in locations:
+                if figure.get("path"):
+                    expected_images[clause] += 1
+            if compact(figure["title"] + "（" + figure["id"] + "）") not in compact(paragraph_text):
+                issue("SRS.MODEL_FIGURE", "Saved figure caption/ID missing: " + figure["id"], object_id=figure["id"], source="implementation")
+        for clause, count in expected_images.items():
+            if actual_images[clause] < count:
+                issue("SRS.MODEL_FIGURE", f"Section {clause} contains {actual_images[clause]} drawings, expected at least {count}", clause, source="implementation")
         # Compare actual saved trace/qualification records to the independently
         # validated model, never regenerate a supposed source baseline here.
         actual_forward = {(r.get("来源编号", ""), r.get("SRS需求编号", "")) for r in forward}

@@ -37,7 +37,7 @@ def fixture():
         forward.append(dict(source=sid, requirement_id=rid, classification="软件验收需求", location=clause, disposition="落实"))
         reverse.append(dict(requirement_id=rid, source_ids=[sid], methods=["测试"], category=clause, evidence="EV-" + rid))
     return {
-        "schema_version": "2.0",
+        "schema_version": "2.0", "writing_profile": "gjb-standard",
         "metadata": {
             "document_type": "SRS", "title": "归档演示软件需求规格说明", "version": "1.0",
             "classification": "公开测试资料", "csci_id": "DEMO-ARCHIVE", "document_id": "DEMO-SRS",

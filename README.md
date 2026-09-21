@@ -1,6 +1,6 @@
 # GJB438C DOCX Style Skill
 
-Version **0.2.0** provides a Codex skill for drafting, repairing, and auditing
+Version **0.3.0** provides a Codex skill for drafting, repairing, and auditing
 Chinese GJB 438C-2021 documents, with a dedicated software requirements
 specification (SRS) workflow.
 
@@ -11,7 +11,9 @@ standard clauses, resolved defects, regression tests, and rendered-page evidence
 
 The SRS route follows Appendix J's content structure and records requirement
 identifiers, applicable conditions, qualification methods, source relationships,
-tailoring decisions, and unresolved inputs. It supports two working modes:
+tailoring decisions, and unresolved inputs. SRS writing defaults to **training-review**: recursive capability chapters, overview and module figures, function lists, development status, and separate contract-mapping dispositions. Select **gjb-standard** explicitly to apply standard content without these training conventions. See the [writing profile and model API](gjb438c-docx-style/references/srs-training-review.md). Training conventions are not additional GJB clauses.
+
+The writing profile is independent of two working modes:
 
 - **Draft** preserves unresolved information and reports gaps for further work.
   The demo is a drafting example, not an approved project baseline.
@@ -83,7 +85,7 @@ Use a project content model following
 `gjb438c-docx-style/references/srs-content-schema.json` for review:
 
 ```bash
-python gjb438c-docx-style/scripts/apply_gjb438c_template.py --content-json content.json --document-type SRS --mode review --output build/srs-review.docx
+python gjb438c-docx-style/scripts/apply_gjb438c_template.py --content-json content.json --document-type SRS --writing-profile training-review --mode review --output build/srs-review.docx
 python gjb438c-docx-style/scripts/audit_gjb438c_docx.py build/srs-review.docx --document-type SRS --strict-srs --content-json content.json --json
 ```
 
@@ -107,7 +109,7 @@ python gjb438c-docx-style/scripts/audit_gjb438c_docx.py --skill-dir gjb438c-docx
 python tools/build_srs_fixture.py --output build/srs-review.json
 ```
 
-The fixture builder creates synthetic review data for regression checks. Its
+The fixture builder creates synthetic standard-profile review data for regression checks. Training-profile regressions use a separate synthetic tree with unequal depths, controlled contract statuses and figure associations. Its
 independent source baseline and interface definition are in
 [`tests/fixtures/DEMO-SSS.md`](tests/fixtures/DEMO-SSS.md) and
 [`tests/fixtures/DEMO-IRS.md`](tests/fixtures/DEMO-IRS.md); none is a real project
