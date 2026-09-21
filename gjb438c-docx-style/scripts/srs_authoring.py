@@ -14,6 +14,47 @@ BUSINESS_FLOW_TYPES = frozenset({"activity", "swimlane"})
 REQUIREMENT_FLOW_TYPES = BUSINESS_FLOW_TYPES | {"sequence"}
 
 
+def contract_trace_tables(content: dict) -> list[dict]:
+    """Project contract views; independent source inventory remains the denominator.
+
+    Non-contract evidence is never promoted into a contract endpoint. Pending
+    requirements remain explicit dispositions, even without a contract source.
+    """
+    sources = [s for s in content.get("source_requirements", []) if s.get("kind") == "contract"]
+    by_id = {s["id"]: s for s in sources}
+    requirements = content.get("requirements", [])
+    labels = {"mapped": "mapped（条文映射已核，非合同批准）", "confirmed": "confirmed（条文映射已核，非合同批准）",
+              "derived": "derived（合同父条文派生，非合同批准）", "pending": "pending（受控保留，合同范围未确认）",
+              "not_applicable": "not_applicable（不适用处置）"}
+
+    def locator(source):
+        return " / ".join(str(source.get(k) or "未提供") for k in ("reference_id", "location"))
+
+    forward, reverse = [], []
+    for source in sources:
+        linked = [r for r in requirements if source["id"] in r.get("contract_trace", {}).get("source_ids", [])]
+        if not linked:
+            disposition = "；".join(str(source[k]) for k in ("allocation", "disposition", "reason") if source.get(k))
+            forward.append([source["id"], locator(source), "未登记软件需求映射", "未登记", source.get("confirmation", "未提供"), disposition or "未提供处置"])
+        for req in linked:
+            trace = req["contract_trace"]
+            detail = "；".join([trace.get("basis", ""), "、".join(trace.get("tbd_ids", []))]).strip("；")
+            forward.append([source["id"], locator(source), req["id"], labels.get(trace.get("status"), "未登记"), source.get("confirmation", "未提供"), detail or "见正式需求及原文"])
+    for req in requirements:
+        trace = req.get("contract_trace", {})
+        parents = [s for s in trace.get("source_ids", []) if s in by_id]
+        status = labels.get(trace.get("status"), "未登记合同处置")
+        if trace.get("status") in {"mapped", "confirmed", "derived"} and not parents:
+            status = "合同父来源不足，不能建立正式映射"
+        reverse.append([req["id"], "、".join(parents) or "未提供合同父来源", status,
+                        "；".join(locator(by_id[s]) for s in parents) or "未提供",
+                        trace.get("basis", "") or "见正式需求及原文", "、".join(trace.get("tbd_ids", [])) or "无已登记关联"])
+    return [
+        {"caption": "表 合同来源到软件需求正向追踪", "headers": ["合同来源编号", "原文定位", "软件需求标识", "映射状态", "文件确认状态", "映射依据与处置"], "rows": forward},
+        {"caption": "表 软件需求到合同来源反向追踪及处置", "headers": ["软件需求标识", "合同来源编号", "映射状态", "合同原文定位", "映射依据与处置", "受控未决项"], "rows": reverse},
+    ]
+
+
 def writing_profile(content: dict, override: str | None = None) -> str:
     value = override or content.get("writing_profile", "training-review")
     if value not in WRITING_PROFILES:

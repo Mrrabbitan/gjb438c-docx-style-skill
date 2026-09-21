@@ -229,6 +229,8 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                 else "not_run")
     if result.checks["source_coverage"] == "not_run":
         issue("SRS.SOURCE_BASELINE", "Complete allocated-source coverage is not established; provide the independent source model with --content-json", "J.5", source="review")
+    from srs_authoring import writing_profile as select_writing_profile
+    training = select_writing_profile(model or {}, result.metrics.get("writing_profile")) == "training-review"
     external_labels = {relation_target(row) for key in ("qualification", "forwardTrace", "reverseTrace")
                        for row in (model or {}).get(key, []) if row.get("external_target")}
 
@@ -291,12 +293,16 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
             elif {"SRS需求编号", "来源编号或派生依据"}.issubset(fields):
                 rid = record.get("SRS需求编号", "")
                 reverse[rid].append(record)
-                if clause != "5" and not clause.startswith("5."):
-                    issue("SRS.TRACE_LOCATION", "Reverse trace matrix is outside Chapter 5", "J.5", rid, loc)
+                trace_chapter = "6" if training and model else "5"
+                allowed_chapters = {trace_chapter, "6"} if training and not model else {trace_chapter}
+                if not any(clause == c or clause.startswith(c + ".") for c in allowed_chapters):
+                    issue("SRS.TRACE_LOCATION", "Reverse source trace matrix is outside its profile chapter " + trace_chapter, "J.5", rid, loc)
             elif {"来源编号", "SRS需求编号", "处置"}.issubset(fields):
                 forward.append(record)
-                if clause != "5" and not clause.startswith("5."):
-                    issue("SRS.TRACE_LOCATION", "Forward trace matrix is outside Chapter 5", "J.5", location=loc)
+                trace_chapter = "6" if training and model else "5"
+                allowed_chapters = {trace_chapter, "6"} if training and not model else {trace_chapter}
+                if not any(clause == c or clause.startswith(c + ".") for c in allowed_chapters):
+                    issue("SRS.TRACE_LOCATION", "Forward source trace matrix is outside its profile chapter " + trace_chapter, "J.5", location=loc)
             elif "接口编号" in fields:
                 iid = record.get("接口编号", "")
                 if not iid or iid in interfaces:
@@ -464,6 +470,8 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                 actual, actual_clause, actual_location = observed[0]
                 expected = expected_records[identifier]
                 expected_clause = ("3.4" if expected.get("kind") == "internal" else "3.3") if group == "interfaces" else REGISTER_CLAUSES[group]
+                if training and group == "source_requirements" and expected.get("kind") != "contract":
+                    expected_clause = "6"
                 if actual_clause != expected_clause and not actual_clause.startswith(expected_clause + "."):
                     issue("SRS.MODEL_REGISTER_LOCATION", f"Saved {group} record {identifier} belongs under {expected_clause}, found {actual_clause}", object_id=identifier, location=actual_location, source="implementation")
                 if group == "capabilities" and identifier in capability_clauses and actual_clause != capability_clauses[identifier]:
@@ -473,7 +481,6 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                     label = next((name for name in labels if name in actual), None)
                     if label is None or not model_value_matches(value, actual[label], key):
                         issue("SRS.MODEL_REGISTER_VALUE", f"Saved {group}.{key} differs or is absent for {identifier}", object_id=identifier, location=actual_location, source="implementation")
-        from srs_authoring import writing_profile as select_writing_profile
         if select_writing_profile(model) == "training-review" and outline:
             expected_lists = {"3.2": {r["node"]["id"] for r in outline if r["level"] == 3}}
             for entry in outline:
@@ -530,6 +537,16 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
                     actual_reverse.add((rid, source))
         if expected_reverse != actual_reverse:
             issue("SRS.MODEL_REVERSE", "Saved reverse mappings differ from the validated model", "J.5.a", source="implementation")
+        if training:
+            from srs_authoring import contract_trace_tables
+            for expected_table in contract_trace_tables(model):
+                headers = expected_table["headers"]
+                matching_tables = [(table, clause) for table, clause, _ in tables
+                                   if table.rows and [c.text.strip() for c in table.rows[0].cells] == headers]
+                expected_rows = Counter(tuple(compact(value) for value in row) for row in expected_table["rows"])
+                actual_rows = Counter(tuple(compact(cell.text) for cell in row.cells) for table, _ in matching_tables for row in table.rows[1:])
+                if len(matching_tables) != 1 or any(clause != "5" and not clause.startswith("5.") for _, clause in matching_tables) or actual_rows != expected_rows:
+                    issue("SRS.MODEL_CONTRACT_TRACE", "合同正式追踪表缺失、位置错误或与独立合同来源/映射处置不一致", "J.5", source="implementation")
         expected_q_targets = {relation_target(r) for r in model.get("qualification", [])}
         if expected_q_targets != set(qualifications):
             issue("SRS.MODEL_QUALIFICATION", "Saved qualification targets differ from the validated model", "J.4", source="implementation")
