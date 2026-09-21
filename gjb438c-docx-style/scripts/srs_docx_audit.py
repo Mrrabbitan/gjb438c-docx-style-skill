@@ -482,8 +482,8 @@ def audit_srs(path: Path, document, result, strict=False, template_profile="auto
             for kind, obj, clause, location, _ in blocks:
                 if kind == "table" and obj.rows:
                     headers = [c.text.strip() for c in obj.rows[0].cells]
-                    if headers[:3] == ["唯一标识", "名称", "能力或功能需求"]:
-                        actual_lists[clause].append([row.cells[0].text.strip() for row in obj.rows[1:]])
+                    if headers[:5] == ["序号", "名称", "唯一标识", "需求描述", "研制状态"]:
+                        actual_lists[clause].append([row.cells[2].text.strip() for row in obj.rows[1:]])
             for clause, identifiers in expected_lists.items():
                 actual = actual_lists.get(clause, [])
                 if len(actual) != 1 or set(actual[0]) != identifiers or len(actual[0]) != len(identifiers):

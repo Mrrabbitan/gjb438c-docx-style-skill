@@ -149,15 +149,15 @@ def validate_authoring(content: dict, mode: str, profile: str) -> list[dict]:
         for tid in trace.get("tbd_ids", []):
             if tid not in tbds:
                 add("CONTRACT-TBD", "合同处置引用未登记TBD：" + tid, loc, rid, "5", hard=True)
-        if status in {"mapped", "confirmed"}:
+        if status in {"mapped", "confirmed", "derived"}:
             if not trace.get("source_ids") or any(sources.get(s, {}).get("kind") != "contract" for s in trace.get("source_ids", [])):
-                add("CONTRACT-KIND", "已核映射必须指向明确登记为contract的原文来源", loc, rid, "5")
+                add("CONTRACT-KIND", "已核映射或合同派生必须指向明确登记为contract的原文父来源", loc, rid, "5")
             if any(sources.get(s, {}).get("confirmation") == "pending" for s in trace.get("source_ids", [])):
                 add("CONTRACT-BASELINE", "条文映射已登记，但合同原件/采纳状态仍待确认，不能宣称批准合同基线", loc, rid, "5")
         elif status == "pending":
             add("CONTRACT-PENDING", "合同依据受控待确认；本需求尚未获得合同范围确认", loc, rid, "5")
             if not trace.get("basis", "").strip() or not trace.get("tbd_ids"):
                 add("CONTRACT-DISPOSITION", "待定合同关联需要保留理由与具体TBD", loc, rid, "5")
-        elif not trace.get("basis", "").strip():
+        if status in {"derived", "not_applicable"} and not trace.get("basis", "").strip():
             add("CONTRACT-DISPOSITION", "派生或不适用处置需要具体依据", loc, rid, "5")
     return findings
