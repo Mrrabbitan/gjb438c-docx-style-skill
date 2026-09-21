@@ -26,7 +26,7 @@ from docx.shared import Pt, Twips
 
 from audit_gjb438c_docx import AuditResult, audit_page_numbering
 from srs_model import (CLAUSE_TITLES, normalize_srs_content, require_valid_srs_content, validate_srs_content)
-from srs_authoring import capability_outline, writing_profile as select_writing_profile, DEVELOPMENT_LABELS
+from srs_authoring import capability_outline, contract_trace_tables, writing_profile as select_writing_profile, DEVELOPMENT_LABELS
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
@@ -1141,13 +1141,26 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft", writ
     sections.append({"level": 1, "title": "合格性规定", "tables": [{"caption": "表 需求合格性矩阵", "headers": ["需求编号", "合格性方法", "验证条件", "计划证据", "通过准则"], "rows": [[target_text(item), "、".join(item["methods"]), item.get("condition", ""), item.get("evidence", ""), item.get("pass_criterion", "")] for item in qualifications]}] if qualifications else [], "paragraphs": [] if qualifications else ["尚未提供合格性规定（草稿）。"]})
     sections[-1]["tables"].extend(record_table(item, item["name"] + " 合格性方法扩展") for item in content.get("qualification_method_extensions", []))
     forward, reverse = content.get("forwardTrace", []), content.get("reverseTrace", [])
-    trace_tables = [record_table(item, item["id"] + " 来源需求台账", {"id": "来源编号", "kind": "来源类别"}) for item in content.get("source_requirements", [])]
+    source_tables = [(item, record_table(item, item["id"] + " 来源需求台账", {"id": "来源编号", "kind": "来源类别"})) for item in content.get("source_requirements", [])]
+    trace_tables = []
     if forward:
         trace_tables.append({"caption": "表 来源到SRS正向追踪", "headers": ["来源编号", "来源分类", "SRS需求编号", "落实位置", "处置"], "rows": [[item["source"], item.get("classification", ""), target_text(item), item.get("location", ""), item.get("disposition", "")] for item in forward]})
     if reverse:
         trace_tables.append({"caption": "表 SRS到来源反向追踪", "headers": ["SRS需求编号", "类别", "来源编号或派生依据", "合格性方法", "计划证据"], "rows": [[target_text(item), item.get("category", ""), "、".join(item.get("source_ids", [])) or item.get("source", "") or item.get("derivation_basis", ""), "、".join(item.get("methods", [])), item.get("evidence", "")] for item in reverse]})
-    sections.append({"level": 1, "title": "需求可追踪性", "tables": trace_tables, "paragraphs": [] if trace_tables else ["尚未提供独立来源台账及追踪关系（草稿）。"]})
+    historical_tables = []
+    if profile == "training-review":
+        historical_tables = [table for item, table in source_tables if item.get("kind") != "contract"] + trace_tables
+        for table in historical_tables:
+            table["caption"] = table["caption"].replace("表 ", "表 历史来源及佐证：", 1)
+        trace_tables = [table for item, table in source_tables if item.get("kind") == "contract"] + contract_trace_tables(content)
+    else:
+        trace_tables = [table for _, table in source_tables] + trace_tables
+    trace_note = ["本章依据独立合同原文台账及合同映射处置建立正式追踪。条文映射不表示合同批准；pending需求保留其范围未确认状态。其他来源与原追踪关系见第6章历史佐证。"] if profile == "training-review" else ([] if trace_tables else ["尚未提供独立来源台账及追踪关系（草稿）。"])
+    sections.append({"level": 1, "title": "需求可追踪性", "tables": trace_tables, "paragraphs": trace_note})
     sections.append({"level": 1, "title": "注释", "paragraphs": [content["notes"]] if content.get("notes") else [], "tables": [record_table(item, item["id"] + " TBD登记", {"id": "TBD编号"}) for item in content.get("tbd", [])]})
+    if historical_tables:
+        sections[-1]["paragraphs"].append("历史来源与佐证追踪：保留原始方案等来源台账及原有双向关系，供依据复核和版本沿革使用；这些记录不构成第5章合同范围已确认的结论。")
+        sections[-1]["tables"].extend(historical_tables)
     physical_counters = [0] * 9
     for section in sections:
         level = section["level"]

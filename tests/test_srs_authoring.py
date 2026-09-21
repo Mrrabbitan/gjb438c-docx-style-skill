@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_srs_model import valid_model, SCRIPTS
-from srs_authoring import capability_outline
+from srs_authoring import capability_outline, contract_trace_tables
 from srs_model import validate_srs_content
 import apply_gjb438c_template as generator
 from audit_gjb438c_docx import audit_docx
@@ -46,6 +46,18 @@ def training_model():
         for kind in ("composition", "activity"):
             ids = [r["id"] for r in model["requirements"] if r["capability_id"] == node["id"]]
             model["figures"].append({"id": node["id"] + "-" + kind, "type": kind, "title": node["name"] + kind, "capability_ids": [node["id"]], "requirement_ids": ids, "reference_id": "SYS-DOC", "location": "图2"})
+    return model
+
+
+def mixed_source_model():
+    model = training_model()
+    model["source_requirements"].append(dict(model["source_requirements"][0], id="PLAN-1", kind="plan", statement="方案中的候选记录查询能力"))
+    req = model["requirements"][0]
+    req["source_ids"] = ["PLAN-1"]
+    req["contract_trace"] = {"status": "pending", "basis": "保留方案候选能力，合同范围由TBD-CONTRACT核实", "tbd_ids": ["TBD-CONTRACT"]}
+    model["forwardTrace"][0]["source"] = "PLAN-1"
+    model["reverseTrace"][0]["source_ids"] = ["PLAN-1"]
+    model["tbd"] = [{"id": "TBD-CONTRACT", "issue": "核实候选能力的合同范围", "impact": "候选查询能力", "owner": "示例负责人", "status": "open", "closure_condition": "提供合同范围确认依据", "affected_ids": [req["id"]]}]
     return model
 
 
@@ -115,6 +127,41 @@ class AuthoringTests(unittest.TestCase):
         self.assertFalse(self.rules(model, "draft"))
         model["requirements"][0]["contract_trace"].pop("basis")
         self.assertIn("SRS-AUTHORING-CONTRACT-DISPOSITION", self.rules(model))
+
+    def test_training_formal_contract_trace_excludes_plan_and_preserves_pending(self):
+        model = mixed_source_model()
+        sections = generator.canonical_srs_to_sections(model, "draft")
+        formal = next(s for s in sections if s["title"] == "需求可追踪性")
+        history = next(s for s in sections if s["title"] == "注释")
+        self.assertNotIn("PLAN-1", json.dumps(formal, ensure_ascii=False))
+        self.assertIn("PLAN-1", json.dumps(history, ensure_ascii=False))
+        row = next(row for table in formal["tables"] if table["headers"][0] == "软件需求标识" for row in table["rows"] if row[0] == model["requirements"][0]["id"])
+        self.assertIn("pending", row[2])
+        self.assertEqual(row[1], "未提供合同父来源")
+        standard = generator.canonical_srs_to_sections(model, "draft", writing_profile="gjb-standard")
+        self.assertIn("PLAN-1", json.dumps(next(s for s in standard if s["title"] == "需求可追踪性"), ensure_ascii=False))
+
+    def test_unmapped_contract_inventory_is_not_reconstructed_from_requirements(self):
+        model = mixed_source_model()
+        model["source_requirements"].append(dict(model["source_requirements"][0], id="CONTRACT-UNALLOCATED", statement="另一交付范围的独立合同义务", allocation="not_allocated", disposition="deferred", reason="另项交付"))
+        forward = contract_trace_tables(model)[0]["rows"]
+        row = next(r for r in forward if r[0] == "CONTRACT-UNALLOCATED")
+        self.assertEqual(row[2], "未登记软件需求映射")
+        self.assertIn("另项交付", row[5])
+
+    def test_saved_contract_trace_and_historical_evidence_are_audited(self):
+        model = mixed_source_model()
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "contracts.docx"
+            generator.build_document(generator.SRS_TEMPLATE, model, path, "draft")
+            result = audit_docx(path, document_type="SRS", mode="draft", content=model)
+            self.assertTrue(result.ok, result.errors)
+            doc = Document(path)
+            table = next(t for t in doc.tables if t.rows[0].cells[0].text == "合同来源编号")
+            table.rows[1].cells[0].text = "PLAN-1"
+            doc.save(path)
+            result = audit_docx(path, document_type="SRS", mode="draft", content=model)
+            self.assertIn("SRS.MODEL_CONTRACT_TRACE", {f["rule_id"] for f in result.findings})
 
     def test_word_depth_limit_is_explicit_without_flattening(self):
         model = valid_model()
