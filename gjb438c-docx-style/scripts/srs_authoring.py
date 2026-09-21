@@ -10,6 +10,8 @@ from typing import Any
 
 WRITING_PROFILES = ("training-review", "gjb-standard")
 DEVELOPMENT_LABELS = {"new": "新研", "modified": "改造（升级）", "reused": "沿用", "tbd": "待确认"}
+BUSINESS_FLOW_TYPES = frozenset({"activity", "swimlane"})
+REQUIREMENT_FLOW_TYPES = BUSINESS_FLOW_TYPES | {"sequence"}
 
 
 def writing_profile(content: dict, override: str | None = None) -> str:
@@ -109,9 +111,9 @@ def validate_authoring(content: dict, mode: str, profile: str) -> list[dict]:
         roots = [row for row in outline if row["level"] == 3]
         if content.get("expected_capability_roots") is not None and len(roots) != content["expected_capability_roots"]:
             add("ROOT-COUNT", "能力入口数量与项目显式配置不一致", "/expected_capability_roots")
-        for kind in ("composition", "use_case", "activity"):
-            if not any(f.get("clause") == "3.2" and f["type"] == kind for f in figures):
-                add("SYSTEM-DIAGRAM", "3.2尚缺图类型：" + kind, "/figures")
+        for kinds in ({"composition"}, {"use_case"}, BUSINESS_FLOW_TYPES):
+            if not any(f.get("clause") == "3.2" and f["type"] in kinds for f in figures):
+                add("SYSTEM-DIAGRAM", "3.2尚缺图类型：" + "/".join(sorted(kinds)), "/figures")
     for row in outline:
         cap, items = row["node"], row["requirements"]
         cid, clause = cap["id"], row["physical_clause"]
@@ -123,12 +125,12 @@ def validate_authoring(content: dict, mode: str, profile: str) -> list[dict]:
         if not cap.get("development_status") or not cap.get("development_basis", "").strip():
             add("DEVELOPMENT", "节点缺研制状态或其事实依据；未知用tbd并关联未决项", loc, cid, clause)
         matching = [f for f in figures if cid in f.get("capability_ids", [])]
-        for kind in ("composition", "activity"):
-            if not any(f["type"] == kind for f in matching):
-                add("NODE-DIAGRAM", "能力节点缺少直接关联的" + kind + "图；系统总图不能替代模块图", loc, cid, clause)
+        for kinds in ({"composition"}, BUSINESS_FLOW_TYPES):
+            if not any(f["type"] in kinds for f in matching):
+                add("NODE-DIAGRAM", "能力节点缺少直接关联的" + "/".join(sorted(kinds)) + "图；系统总图不能替代模块图", loc, cid, clause)
         for req in items:
-            if not any(f["type"] == "activity" and req["id"] in f.get("requirement_ids", []) for f in matching):
-                add("REQUIREMENT-DIAGRAM", "正式需求未关联本模块活动图的明确覆盖范围", "/figures", req["id"], clause)
+            if not any(f["type"] in REQUIREMENT_FLOW_TYPES and req["id"] in f.get("requirement_ids", []) for f in matching):
+                add("REQUIREMENT-DIAGRAM", "正式需求未关联本模块活动图、泳道图或时序图的明确覆盖范围", "/figures", req["id"], clause)
     for i, req in enumerate(content.get("requirements", [])):
         rid, loc = req["id"], f"/requirements/{i}"
         if req["clause"] == "3.2":

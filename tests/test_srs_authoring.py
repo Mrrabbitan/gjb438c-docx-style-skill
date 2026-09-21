@@ -138,6 +138,43 @@ class AuthoringTests(unittest.TestCase):
                 fig["requirement_ids"] = []
         self.assertIn("SRS-AUTHORING-REQUIREMENT-DIAGRAM", self.rules(model))
 
+    def test_swimlane_satisfies_system_node_and_requirement_flow(self):
+        model = training_model()
+        for figure in model["figures"]:
+            if figure["type"] == "activity":
+                figure["type"] = "swimlane"
+        self.assertFalse(self.rules(model))
+
+    def test_leaf_sequence_coverage_preserves_node_business_flow(self):
+        model = training_model()
+        flow = next(f for f in model["figures"] if f["id"] == "BY-ID-activity")
+        sequence = dict(flow, id="BY-ID-sequence", type="sequence", title="编号查询时序")
+        flow["requirement_ids"] = []
+        model["figures"].append(sequence)
+        self.assertFalse(self.rules(model))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "sequence.docx"
+            generator.build_document(generator.SRS_TEMPLATE, model, path, "review")
+            report = audit_docx(path, document_type="SRS", mode="review", content=model)
+            self.assertTrue(report.ok, report.errors)
+
+    def test_sequence_alone_cannot_replace_system_or_node_flow(self):
+        model = training_model()
+        for figure in model["figures"]:
+            if figure["type"] == "activity":
+                figure["type"] = "sequence"
+        errors = self.rules(model)
+        self.assertIn("SRS-AUTHORING-SYSTEM-DIAGRAM", errors)
+        self.assertIn("SRS-AUTHORING-NODE-DIAGRAM", errors)
+        self.assertNotIn("SRS-AUTHORING-REQUIREMENT-DIAGRAM", errors)
+
+    def test_sequence_on_other_node_cannot_cover_leaf_requirement(self):
+        model = training_model()
+        flow = next(f for f in model["figures"] if f["id"] == "BY-ID-activity")
+        model["figures"].append(dict(flow, id="WRONG-NODE-sequence", type="sequence", capability_ids=["QUERY"]))
+        flow["requirement_ids"] = []
+        self.assertIn("SRS-AUTHORING-REQUIREMENT-DIAGRAM", self.rules(model))
+
     def test_tbd_context_is_local_and_tracks_file_identity_links(self):
         model = training_model()
         model["tbd"] = [{"id": "TBD-DEV", "issue": "研制范围", "owner": "示例角色", "status": "open", "closure_condition": "确认研制范围", "impact": "能力节点研制状态"}, {"id": "TBD-FILE", "issue": "来源文件身份", "owner": "示例角色", "status": "open", "closure_condition": "提供受控文件", "impact": "来源身份"}]
