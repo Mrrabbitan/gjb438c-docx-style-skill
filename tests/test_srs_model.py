@@ -13,6 +13,7 @@ def valid_model():
     missing = ["3.1", "3.3", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15", "3.16", "3.17"]
     return {
         "schema_version": "2.0",
+        "writing_profile": "gjb-standard",
         "metadata": {"document_type": "SRS", "title": "校验样例", "version": "1.0", "classification": "公开", "csci_id": "CSCI-1", "system_overview": "本示例为一个离线记录查询配置项。", "document_overview": "本文规定记录查询需求及其验收依据。"},
         "references": [{"number": "SYS-DOC", "title": "示例系统规格", "organization": "示例单位", "revision": "1.0", "date": "2026-09-15"}],
         "requirements": [{"id": "REQ-任意#1", "clause": "3.2", "statement": "软件应返回编号匹配的记录。", "source_ids": ["SYS-1"], "qualification_methods": ["测试"]}],

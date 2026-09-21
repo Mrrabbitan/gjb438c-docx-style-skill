@@ -102,6 +102,14 @@
           },
           "normative": {
             "type": "boolean"
+          },
+          "tbd_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
           }
         },
         "required": [
@@ -232,6 +240,55 @@
               "rationale"
             ],
             "additionalProperties": false
+          },
+          "physical_clause": {
+            "type": "string"
+          },
+          "exception_applicability": {
+            "enum": [
+              "applicable",
+              "not_applicable"
+            ]
+          },
+          "exception_basis": {
+            "type": "string"
+          },
+          "contract_trace": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "mapped",
+                  "confirmed",
+                  "derived",
+                  "pending",
+                  "not_applicable"
+                ]
+              },
+              "source_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "basis": {
+                "type": "string"
+              },
+              "tbd_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -316,6 +373,36 @@
           },
           "parent_id": {
             "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "overview": {
+            "type": "string"
+          },
+          "physical_clause": {
+            "type": "string",
+            "pattern": "^3\\.2\\.[1-9][0-9]*(\\.[1-9][0-9]*)*$"
+          },
+          "development_status": {
+            "enum": [
+              "new",
+              "modified",
+              "reused",
+              "tbd"
+            ]
+          },
+          "development_basis": {
+            "type": "string"
+          },
+          "tbd_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
           }
         },
         "required": [
@@ -814,6 +901,28 @@
               "deferred",
               "not_applicable"
             ]
+          },
+          "kind": {
+            "enum": [
+              "contract",
+              "standard",
+              "plan",
+              "other"
+            ]
+          },
+          "confirmation": {
+            "enum": [
+              "confirmed",
+              "pending"
+            ]
+          },
+          "tbd_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
           }
         },
         "required": [
@@ -951,6 +1060,85 @@
       "type": "array",
       "items": {
         "type": "object"
+      }
+    },
+    "writing_profile": {
+      "enum": [
+        "training-review",
+        "gjb-standard"
+      ]
+    },
+    "capability_overview": {
+      "type": "string"
+    },
+    "expected_capability_roots": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "figures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "enum": [
+              "composition",
+              "use_case",
+              "activity",
+              "swimlane",
+              "sequence",
+              "state",
+              "interface",
+              "data",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string"
+          },
+          "reference_id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "clause": {
+            "type": "string"
+          },
+          "capability_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "requirement_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title"
+        ],
+        "additionalProperties": false
       }
     }
   },

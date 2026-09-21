@@ -26,6 +26,7 @@ from docx.shared import Pt, Twips
 
 from audit_gjb438c_docx import AuditResult, audit_page_numbering
 from srs_model import (CLAUSE_TITLES, normalize_srs_content, require_valid_srs_content, validate_srs_content)
+from srs_authoring import capability_outline, writing_profile as select_writing_profile, DEVELOPMENT_LABELS
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
@@ -34,13 +35,7 @@ DOCUMENT_PROFILES = json.loads(PROFILE_FILE.read_text(encoding="utf-8"))
 DEFAULT_TEMPLATE = SKILL_DIR / DOCUMENT_PROFILES["overall-technical-solution"]["template"]
 SRS_TEMPLATE = SKILL_DIR / DOCUMENT_PROFILES["SRS-P09"]["template"]
 
-HEADING_STYLE_BY_LEVEL = {
-    1: "Heading 1",
-    2: "Heading 2",
-    3: "Heading 3",
-    4: "Heading 4",
-    5: "Heading 5",
-}
+HEADING_STYLE_BY_LEVEL = {level: f"Heading {level}" for level in range(1, 10)}
 HEADING_LEVEL_BY_STYLE = {name: level for level, name in HEADING_STYLE_BY_LEVEL.items()}
 
 TABLE_HEADER_STYLE = "145表头"
@@ -161,8 +156,9 @@ def normalize_srs_styles(document: Document) -> None:
         "Heading 3": ("仿宋", 12),
         "Heading 4": ("仿宋", 12),
     }
+    heading_specs.update({f"Heading {level}": ("仿宋", 12) for level in range(5, 10)})
     for name, (font_name, size) in heading_specs.items():
-        style = document.styles[name]
+        style = document.styles[name] if name in style_names(document) else document.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
         set_style_font(style, font_name, size, bold=True)
         style.paragraph_format.keep_with_next = True
         style.paragraph_format.keep_together = True
@@ -209,6 +205,15 @@ def normalize_srs_styles(document: Document) -> None:
         toc_heading.element.get_or_add_rPr().append(color)
     color.attrib.clear()
     color.set(qn("w:val"), "000000")
+    for level in range(4, 10):
+        name = f"toc {level}"
+        toc_style = document.styles[name] if name in style_names(document) else document.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+        toc_style.base_style = document.styles["toc 3"]
+        set_style_font(toc_style, "宋体", 12)
+        toc_style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+        toc_style.paragraph_format.line_spacing = Pt(24)
+        toc_style.paragraph_format.left_indent = Twips((level - 1) * 240)
+        toc_style.paragraph_format.first_line_indent = Twips(0)
     for name in ("SRS题注", "SRS表头", "SRS表正文"):
         fmt = document.styles[name].paragraph_format
         fmt.line_spacing_rule = WD_LINE_SPACING.EXACTLY
@@ -474,7 +479,7 @@ def enable_update_fields(document: Document) -> None:
     element.set(qn("w:val"), "true")
 
 
-def reset_toc_field(document: Document) -> None:
+def reset_toc_field(document: Document, depth: int = 3) -> None:
     """Remove stale TOC cache and retain one updateable Word TOC field."""
     for sdt in document._body._element.iter(qn("w:sdt")):
         instructions = " ".join(node.text or "" for node in sdt.iter(qn("w:instrText")))
@@ -505,7 +510,7 @@ def reset_toc_field(document: Document) -> None:
         paragraph.append(ppr)
         for kind, value in [
             ("fldChar", "begin"),
-            ("instrText", ' TOC \\o "1-3" \\h \\z \\u '),
+            ("instrText", f' TOC \\o "1-{depth}" \\h \\z \\u '),
             ("fldChar", "separate"),
             ("text", "打开文档后请更新目录域"),
             ("fldChar", "end"),
@@ -551,7 +556,7 @@ def reset_toc_field(document: Document) -> None:
                 paragraph.clear()
             else:
                 paragraph._p.getparent().remove(paragraph._p)
-        append_word_field(first, ' TOC \\o "1-3" \\h \\z \\u ', "打开文档后请更新目录域")
+        append_word_field(first, f' TOC \\o "1-{depth}" \\h \\z \\u ', "打开文档后请更新目录域")
         for node in boundary_ends:
             first._p.append(node)
         break
@@ -978,9 +983,10 @@ def canonical_requirement_row(requirement: dict[str, Any]) -> list[str]:
     return [display_value(mapping[header]) for header in SRS_RECORD_HEADERS]
 
 
-def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft") -> list[dict[str, Any]]:
+def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft", writing_profile: str | None = None) -> list[dict[str, Any]]:
     """Render validated source facts; never infer approvals or source coverage."""
-    content, _ = require_valid_srs_content(content, mode)
+    content, _ = require_valid_srs_content(content, mode, writing_profile)
+    profile = select_writing_profile(content, writing_profile)
     metadata = content["metadata"]
     requirements = content["requirements"]
     by_clause: dict[str, list[dict[str, Any]]] = {}
@@ -998,7 +1004,7 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft") -> l
         "irs_reference": "受控IRS引用", "statement": "陈述", "reference_id": "引用文件编号", "location": "定位", "allocation": "分配范围",
         "disposition": "处置", "reason": "原因", "number": "文档编号", "title": "标题", "organization": "编写单位",
         "revision": "修订版", "date": "日期", "source": "获取来源", "normative": "规范性引用", "approval": "受控批准依据",
-        "csci_id": "配置项标识", "document_id": "文档编号", "release": "发布号", "issue": "未决事项", "impact": "影响范围", "closure_condition": "关闭条件", "closure_evidence": "关闭证据", "affected_ids": "受影响对象", "due": "期限",
+        "csci_id": "配置项标识", "document_id": "文档编号", "release": "发布号", "issue": "未决事项", "impact": "影响范围", "closure_condition": "关闭条件", "closure_evidence": "关闭证据", "affected_ids": "受影响对象", "due": "期限", "overview": "能力概述", "order": "同级顺序", "physical_clause": "物理章节", "development_status": "研制状态", "development_basis": "研制状态依据", "confirmation": "来源确认状态", "tbd_ids": "关联未决事项",
     }
 
     def record_table(row: dict[str, Any], caption: str, overrides: dict[str, str] | None = None) -> dict[str, Any]:
@@ -1008,7 +1014,7 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft") -> l
 
     def req_tables(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         output = []
-        req_labels = {"id": "需求编号", "clause": "所属条款", "statement": "需求陈述", "applicability": "适用条件", "input": "输入", "output": "预期输出", "boundary": "性能或边界", "exception": "异常与恢复", "priority": "优先级", "criticality": "关键性", "qualification_methods": "合格性方法", "source_ids": "来源编号", "source": "来源编号", "derivation": "派生依据", "state_ids": "适用状态", "capability_id": "能力编号", "capability": "能力名称", "interface_id": "接口编号", "data_ids": "数据编号"}
+        req_labels = {"id": "需求编号", "clause": "所属条款", "statement": "需求陈述", "applicability": "适用条件", "input": "输入", "output": "预期输出", "boundary": "性能或边界", "exception": "异常与恢复", "priority": "优先级", "criticality": "关键性", "qualification_methods": "合格性方法", "source_ids": "来源编号", "source": "来源编号", "derivation": "派生依据", "state_ids": "适用状态", "capability_id": "能力编号", "capability": "能力名称", "interface_id": "接口编号", "data_ids": "数据编号", "physical_clause": "物理章节", "contract_trace": "合同映射处置", "exception_applicability": "异常适用性", "exception_basis": "异常适用依据"}
         for req in items:
             row = dict(req)
             if row.get("source_ids"):
@@ -1020,7 +1026,7 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft") -> l
         return output
 
     def clause_section(clause: str, *, has_content: bool = False) -> dict[str, Any]:
-        row: dict[str, Any] = {"level": 3 if clause.count(".") == 2 else 2, "title": CLAUSE_TITLES[clause], "paragraphs": [], "tables": req_tables(by_clause.get(clause, []))}
+        row: dict[str, Any] = {"clause": clause, "level": 3 if clause.count(".") == 2 else 2, "title": CLAUSE_TITLES[clause], "paragraphs": [], "tables": req_tables(by_clause.get(clause, []))}
         has_content = has_content or bool(row["tables"])
         disposition = tailoring.get(clause, {})
         if clause.startswith("3.11.") and tailoring.get("3.11", {}).get("status") == "not_applicable":
@@ -1047,13 +1053,30 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft") -> l
     sections.append(row)
 
     capabilities = content.get("capabilities", [])
+    outline = capability_outline(content)
     sections.append(clause_section("3.2", has_content=bool(capabilities)))
-    sections[-1]["tables"] = []  # Place each requirement exactly once in its capability group.
+    sections[-1]["paragraphs"] = [content["capability_overview"]] if content.get("capability_overview") else sections[-1]["paragraphs"]
+    sections[-1]["tables"] = []
     grouped: set[str] = set()
-    for cap in capabilities:
-        items = [req for req in by_clause.get("3.2", []) if req.get("capability_id") == cap["id"]]
+
+    def function_list(rows, items, caption):
+        entries = [[r["node"]["id"], r["node"]["name"], r["node"].get("overview") or r["node"].get("purpose", ""), DEVELOPMENT_LABELS.get(r["node"].get("development_status"), "未提供"), r["node"].get("development_basis", "未提供"), r["physical_clause"]] for r in rows]
+        entries.extend([req["id"], req.get("name") or req["id"], req["statement"], "见所属模块", "、".join(req.get("source_ids", [])), req.get("physical_clause", "")] for req in items)
+        return {"caption": "表 " + caption, "headers": ["唯一标识", "名称", "能力或功能需求", "研制状态", "依据或来源", "正文位置"], "rows": entries}
+
+    if profile == "training-review" and outline:
+        sections[-1]["tables"].append(function_list([r for r in outline if r["level"] == 3], [], "系统功能需求清单"))
+    for entry in outline:
+        cap, items = entry["node"], entry["requirements"]
         grouped.update(req["id"] for req in items)
-        sections.append({"level": 3, "title": cap["name"] + "（" + cap["id"] + "）", "tables": [record_table(cap, cap["id"] + " 能力定义")] + req_tables(items)})
+        record = dict(cap)
+        record.setdefault("physical_clause", entry["physical_clause"])
+        row = {"level": entry["level"], "clause": entry["physical_clause"], "capability_id": cap["id"], "title": cap["name"] + "（" + cap["id"] + "）", "paragraphs": [cap.get("overview") or cap.get("purpose") or cap.get("description") or "尚未提供能力概述（草稿）。"], "tables": [record_table(record, cap["id"] + " 能力定义")]}
+        children = [r for r in outline if r["node"].get("parent_id") == cap["id"]]
+        if profile == "training-review":
+            row["tables"].append(function_list(children, [dict(req, physical_clause=entry["physical_clause"]) for req in items], cap["id"] + " 功能清单"))
+        row["tables"].extend(req_tables(items))
+        sections.append(row)
     legacy_groups: dict[str, list[dict[str, Any]]] = {}
     for req in by_clause.get("3.2", []):
         if req["id"] not in grouped:
@@ -1117,13 +1140,31 @@ def canonical_srs_to_sections(content: dict[str, Any], mode: str = "draft") -> l
     sections.append({"level": 1, "title": "合格性规定", "tables": [{"caption": "表 需求合格性矩阵", "headers": ["需求编号", "合格性方法", "验证条件", "计划证据", "通过准则"], "rows": [[target_text(item), "、".join(item["methods"]), item.get("condition", ""), item.get("evidence", ""), item.get("pass_criterion", "")] for item in qualifications]}] if qualifications else [], "paragraphs": [] if qualifications else ["尚未提供合格性规定（草稿）。"]})
     sections[-1]["tables"].extend(record_table(item, item["name"] + " 合格性方法扩展") for item in content.get("qualification_method_extensions", []))
     forward, reverse = content.get("forwardTrace", []), content.get("reverseTrace", [])
-    trace_tables = [record_table(item, item["id"] + " 来源需求台账", {"id": "来源编号"}) for item in content.get("source_requirements", [])]
+    trace_tables = [record_table(item, item["id"] + " 来源需求台账", {"id": "来源编号", "kind": "来源类别"}) for item in content.get("source_requirements", [])]
     if forward:
         trace_tables.append({"caption": "表 来源到SRS正向追踪", "headers": ["来源编号", "来源分类", "SRS需求编号", "落实位置", "处置"], "rows": [[item["source"], item.get("classification", ""), target_text(item), item.get("location", ""), item.get("disposition", "")] for item in forward]})
     if reverse:
         trace_tables.append({"caption": "表 SRS到来源反向追踪", "headers": ["SRS需求编号", "类别", "来源编号或派生依据", "合格性方法", "计划证据"], "rows": [[target_text(item), item.get("category", ""), "、".join(item.get("source_ids", [])) or item.get("source", "") or item.get("derivation_basis", ""), "、".join(item.get("methods", [])), item.get("evidence", "")] for item in reverse]})
     sections.append({"level": 1, "title": "需求可追踪性", "tables": trace_tables, "paragraphs": [] if trace_tables else ["尚未提供独立来源台账及追踪关系（草稿）。"]})
     sections.append({"level": 1, "title": "注释", "paragraphs": [content["notes"]] if content.get("notes") else [], "tables": [record_table(item, item["id"] + " TBD登记", {"id": "TBD编号"}) for item in content.get("tbd", [])]})
+    physical_counters = [0] * 9
+    for section in sections:
+        level = section["level"]
+        physical_counters[level - 1] += 1
+        physical_counters[level:] = [0] * (9 - level)
+        section.setdefault("clause", ".".join(str(n) for n in physical_counters[:level]))
+        for figure in content.get("figures", []):
+            matches = section.get("capability_id") in figure.get("capability_ids", []) or figure.get("clause") == section["clause"]
+            if not matches:
+                continue
+            if figure.get("description"):
+                section.setdefault("paragraphs", []).append(figure["description"])
+            if figure.get("path"):
+                section.setdefault("figures", []).append({"path": figure["path"], "caption": "图 " + figure["title"] + "（" + figure["id"] + "）"})
+            elif figure.get("reference_id"):
+                section.setdefault("paragraphs", []).append("图引用：" + figure["title"] + "（" + figure["id"] + "） " + figure["reference_id"] + " / " + figure.get("location", ""))
+            else:
+                section.setdefault("paragraphs", []).append("尚未提供图：" + figure["title"] + "（草稿）。")
     return sections
 
 
@@ -1148,7 +1189,7 @@ def _validate_lowlevel_sections(content: dict[str, Any], mode: str) -> None:
                 raise ValueError(f"Table row width mismatch at /sections/{i}/tables/{j}")
 
 
-def load_content(path: Path | None, use_demo: bool, document_type_override: str | None, mode: str = "draft") -> dict[str, Any]:
+def load_content(path: Path | None, use_demo: bool, document_type_override: str | None, mode: str = "draft", writing_profile: str | None = None) -> dict[str, Any]:
     document_type = normalize_document_type(document_type_override)
     if use_demo:
         content = demo_content(document_type)
@@ -1169,6 +1210,8 @@ def load_content(path: Path | None, use_demo: bool, document_type_override: str 
     else:
         metadata["document_type"] = normalize_document_type(str(metadata.get("document_type", OVERALL_DOCUMENT_TYPE)))
     if metadata["document_type"] == "SRS":
+        if writing_profile is not None:
+            content["writing_profile"] = select_writing_profile(content, writing_profile)
         if content.get("sections"):
             _validate_lowlevel_sections(content, mode)
         else:
@@ -1178,10 +1221,13 @@ def load_content(path: Path | None, use_demo: bool, document_type_override: str 
     return content
 
 
-def build_document(template: Path, content: dict[str, Any], output: Path, mode: str = "draft") -> None:
+def build_document(template: Path, content: dict[str, Any], output: Path, mode: str = "draft", writing_profile: str | None = None) -> None:
     if mode not in {"draft", "review"}:
         raise ValueError("mode must be draft or review")
     document_type = normalize_document_type(str((content.get("metadata") or {}).get("document_type", OVERALL_DOCUMENT_TYPE)))
+    if document_type == "SRS" and writing_profile is not None:
+        content = normalize_srs_content(content)
+        content["writing_profile"] = select_writing_profile(content, writing_profile)
     if document_type == "SRS" and content.get("sections"):
         _validate_lowlevel_sections(content, mode)
         sections = normalize_sections(content)
@@ -1202,7 +1248,7 @@ def build_document(template: Path, content: dict[str, Any], output: Path, mode: 
         update_cover_table(document, content.get("metadata", {}) or {})
     write_sections(document, sections, document_type)
     enable_update_fields(document)
-    reset_toc_field(document)
+    reset_toc_field(document, max(section.get("level", 1) for section in sections) if document_type == "SRS" else 3)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
@@ -1232,6 +1278,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--template", type=Path, help="Template DOCX path. Defaults by document type.")
     parser.add_argument("--output", type=Path, required=True, help="Output DOCX path.")
     parser.add_argument("--mode", choices=["draft", "review"], default="draft", help="Draft reports missing facts; review blocks unresolved model requirements. Neither mode certifies visual review.")
+    parser.add_argument("--writing-profile", choices=["training-review", "gjb-standard"], help="Writing convention, separate from draft/review; defaults to model value or training-review.")
     parser.add_argument("--json", action="store_true", help="Emit a machine-readable generation result.")
     return parser.parse_args()
 
@@ -1245,7 +1292,7 @@ def main() -> int:
     args = parse_args()
     issues: list[dict[str, Any]] = []
     try:
-        content = load_content(args.content_json, args.demo, args.document_type, args.mode)
+        content = load_content(args.content_json, args.demo, args.document_type, args.mode, args.writing_profile)
         document_type = normalize_document_type(str((content.get("metadata") or {}).get("document_type", OVERALL_DOCUMENT_TYPE)))
         if document_type == "SRS":
             if content.get("sections"):
@@ -1259,7 +1306,7 @@ def main() -> int:
         failure = {"ok": False, "mode": args.mode, "output": None, "issues": issues, "error": str(exc), "checks": {"semantic_review": "not_run", "visual_review": "not_run"}}
         print(json.dumps(failure, ensure_ascii=False, indent=2) if args.json else str(exc), file=sys.stdout if args.json else sys.stderr)
         return 1 if issues and not any(row["rule_id"].startswith("SRS-SCHEMA") for row in issues) else 2
-    result = {"ok": True, "mode": args.mode, "output": str(args.output), "issues": issues, "checks": {"model": "not_run" if content.get("sections") else "checked", "package": "passed", "semantic_review": "not_run", "visual_review": "not_run"}}
+    result = {"ok": True, "writing_profile": select_writing_profile(content) if document_type == "SRS" else None, "mode": args.mode, "output": str(args.output), "issues": issues, "checks": {"model": "not_run" if content.get("sections") else "checked", "package": "passed", "semantic_review": "not_run", "visual_review": "not_run"}}
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
