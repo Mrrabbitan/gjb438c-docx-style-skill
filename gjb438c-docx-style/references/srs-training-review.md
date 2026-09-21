@@ -13,7 +13,7 @@
 | B051—054 | 按软件组成递归分解；每个节点有名称、唯一标识、父级和正文位置；展开到可验证功能点 | 不同分支可以不同深度。能力域、模块和CSCI不是同义词；不因分章而新增CSCI |
 | B062—065 | 明确用户角色、真实运行方式与适用关系，用泳道、状态或时序表达任务和转换 | 不照搬战时、训练、紧急等示例状态；不假定所有方式互斥 |
 | B068—074 | 3.2提供总体概述、组成图、角色用例图、总体活动图、系统功能清单 | 根能力数量由项目设置；本次项目可显式设17，不作为所有项目的固定数量 |
-| B076—089 | 每层能力节点提供范围与职责概述、组成图、业务活动图、直属能力/功能清单；叶模块中的需求保留细表 | 叶模块组成图可列其功能点，无须制造空子模块；活动图可以覆盖多项相关需求，但须逐项声明覆盖ID |
+| B076—089 | 每层能力节点提供范围与职责概述、组成图、业务流程图（活动图或泳道图）、直属能力/功能清单；叶模块中的需求保留细表 | 叶模块组成图可列其功能点，无须制造空子模块；末级需求可由活动图、泳道图或时序图覆盖，须逐项声明覆盖ID；仅有时序图不能代替节点总体业务流程 |
 | B057、B087—089 | 输入、输出、前置条件、正常/异常判断及责任与流程对应 | 判断节点应有明确分支条件。图里增加的步骤不能无来源地变成新的验收义务 |
 | B073、B079、B084 | 功能清单包含序号、名称、唯一标识、需求描述、研制状态，并保留来源或依据及正文位置 | 新研、改造、沿用须有依据；不依据产品名称、开源属性或技术选型猜定 |
 | B094—099 | 外部接口图和表标识双方、方向、对象、协议及联试条件 | 接口可单向；不强制一个数据类型一个接口；平台模拟不等于真实接入 |
@@ -32,10 +32,12 @@ B114之后的类图、类方法、函数调用图属于设计说明主题，不�
 | `capabilities[]` | 保留`id/name/parent_id/purpose/description`；新增`overview`、`order`（同级排序）、`development_status`（`new/modified/reused/tbd`）、`development_basis`、可选`physical_clause/tbd_ids` |
 | `requirements[]` | `clause`仍为附录J类别，如`3.2`；`capability_id`指真实所属节点；`physical_clause`可明确实际放置章号；`exception`或有依据的`exception_applicability=not_applicable`及`exception_basis`；`contract_trace`见下节 |
 | `figures[]` | `id/type/title`；图片`path`或受控`reference_id/location`；通过`clause`和/或`capability_ids`指定放置位置，`requirement_ids`声明实际覆盖，`description`说明阅读方式或适用边界 |
-| 图类型 | `composition/use_case/activity/swimlane/sequence/state/interface/data/other`。本配置3.2检查`composition/use_case/activity`，各能力节点检查`composition/activity`。泳道作为活动图绘法时使用`type=activity`，description可说明泳道角色 |
+| 图类型 | `composition/use_case/activity/swimlane/sequence/state/interface/data/other`。3.2需`composition`、`use_case`及`activity`或`swimlane`；各能力节点需`composition`及`activity`或`swimlane`。末级需求覆盖接受`activity/swimlane/sequence`；静态组成图不计动态覆盖 |
 | `source_requirements[]` | 可新增`kind=contract/standard/plan/other`及`confirmation=confirmed/pending`；来源性质与文件确认状态分开，不通过REF名称猜测；可用`tbd_ids`显式关联未决文件身份 |
 
 兄弟节点按`order`、输入顺序稳定排序，根从3.2.1编号，按父子树递归生成。Word标题最多9级；超出实际技术限制报错，不能静默压平。目录域覆盖实际标题深度，仍须在办公引擎更新并逐页核验。
+
+例如叶模块保留`type=swimlane`的总体流程，同时用`type=sequence`的交互时序覆盖其中一个正式需求；两图都在`capability_ids`关联该模块，时序图另在`requirement_ids`登记具体需求ID。无需把有效泳道图伪改成`activity`，也不能借父节点的时序图代替本模块覆盖。
 
 `scripts/srs_authoring.py`提供`capability_outline(content)`，返回预序列表`{node, level, physical_clause, requirements}`；异常父级、重复标识、循环和不可达节点抛出异常。`physical_clause`若提供必须匹配计算位置。不得用旧章号掩盖重组后的实际位置。
 
