@@ -1,0 +1,6 @@
+*
+!.gitignore
+!README.zh-CN.md
+!manifest.json
+!recipient.txt
+!original-repository.bundle.age

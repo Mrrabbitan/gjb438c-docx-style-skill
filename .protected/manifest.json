@@ -1,0 +1,10 @@
+{
+  "format": "age encrypted Git bundle",
+  "repository": "Mrrabbitan/gjb438c-docx-style-skill",
+  "snapshot_date": "2026-11-23",
+  "ciphertext_sha256": "dafafaca3450257ab50f941063d24b3811d9d5a0d6195cc45cf7eec18785ccd1",
+  "original_bundle_sha256": "746621e4a450f556d04bb265c0e18362fbe883fee2677782c59c7cc69c4b412a",
+  "recipient_sha256": "3bb3ae44298730394160644db2504074e5097fdf8c3f8b397d8b8e651a11b42d",
+  "recovery_includes": "Complete pre-remediation branches, tags, and reachable history",
+  "private_key_location": "Not stored in this repository"
+}
